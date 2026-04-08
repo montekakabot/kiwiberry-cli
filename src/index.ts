@@ -1,4 +1,4 @@
-import { defineCommand, runMain } from "citty";
+import { defineCommand, renderUsage, runMain } from "citty";
 
 const main = defineCommand({
   meta: {
@@ -9,4 +9,9 @@ const main = defineCommand({
   subCommands: {}
 });
 
-void runMain(main);
+void runMain(main, {
+  showUsage: async (cmd, parent) => {
+    const usage = await renderUsage(cmd, parent);
+    console.error(usage);
+  }
+});
