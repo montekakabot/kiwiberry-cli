@@ -24,6 +24,9 @@ export function removeBusiness(db: Db, id: number) {
 
 export function addBusiness(db: Db, name: string, yelpUrl: string) {
   addBusinessInput.parse({ name, yelpUrl });
-  const result = db.insert(businesses).values({ name, yelpUrl }).returning().get();
-  return result;
+  const existing = db.select().from(businesses).where(eq(businesses.yelpUrl, yelpUrl)).all();
+  if (existing.length > 0) {
+    throw new Error(`A business with this Yelp URL is already registered (id ${existing[0].id})`);
+  }
+  return db.insert(businesses).values({ name, yelpUrl }).returning().get();
 }

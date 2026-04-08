@@ -48,7 +48,7 @@ const remove = defineCommand({
     }
     const removed = removeBusiness(db, id);
     if (removed) {
-      console.error("Business removed");
+      console.log(JSON.stringify({ removed: true, id }));
     } else {
       console.error("Business not found");
       process.exit(1);
