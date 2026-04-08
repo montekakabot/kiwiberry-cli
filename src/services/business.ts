@@ -24,9 +24,12 @@ export function removeBusiness(db: Db, id: number) {
 
 export function addBusiness(db: Db, name: string, yelpUrl: string) {
   addBusinessInput.parse({ name, yelpUrl });
-  const existing = db.select().from(businesses).where(eq(businesses.yelpUrl, yelpUrl)).all();
-  if (existing.length > 0) {
-    throw new Error(`A business with this Yelp URL is already registered (id ${existing[0].id})`);
+  try {
+    return db.insert(businesses).values({ name, yelpUrl }).returning().get();
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
+      throw new Error("A business with this Yelp URL is already registered", { cause: err });
+    }
+    throw err;
   }
-  return db.insert(businesses).values({ name, yelpUrl }).returning().get();
 }

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `businesses_yelp_url_unique` ON `businesses` (`yelp_url`);
