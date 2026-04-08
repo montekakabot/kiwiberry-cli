@@ -1,4 +1,5 @@
 import { defineCommand, renderUsage, runMain } from "citty";
+import business from "./commands/business";
 
 const main = defineCommand({
   meta: {
@@ -6,7 +7,7 @@ const main = defineCommand({
     version: "0.1.0",
     description: "Yelp review tracker CLI — scrape reviews, draft responses, stay on top of feedback."
   },
-  subCommands: {}
+  subCommands: { business }
 });
 
 void runMain(main, {
