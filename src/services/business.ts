@@ -24,7 +24,6 @@ export function removeBusiness(db: Db, id: number) {
 
 export function addBusiness(db: Db, name: string, yelpUrl: string) {
   addBusinessInput.parse({ name, yelpUrl });
-  db.insert(businesses).values({ name, yelpUrl }).run();
-  const [row] = db.select().from(businesses).where(eq(businesses.yelpUrl, yelpUrl)).all();
-  return row;
+  const result = db.insert(businesses).values({ name, yelpUrl }).returning().get();
+  return result;
 }

@@ -51,6 +51,15 @@ describe("BusinessService", () => {
     expect(all.map(b => b.name)).toEqual(["Taco Palace", "Burger Barn"]);
   });
 
+  test("addBusiness returns the newly inserted record even with duplicate URLs", () => {
+    const db = setupDb();
+    const first = addBusiness(db, "Original", "https://www.yelp.com/biz/taco-palace");
+    const second = addBusiness(db, "Duplicate", "https://www.yelp.com/biz/taco-palace");
+
+    expect(second.id).toBeGreaterThan(first.id);
+    expect(second.name).toBe("Duplicate");
+  });
+
   test("addBusiness creates a record and returns it", () => {
     const db = setupDb();
     const biz = addBusiness(db, "Taco Palace", "https://www.yelp.com/biz/taco-palace");
