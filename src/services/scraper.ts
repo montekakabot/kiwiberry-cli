@@ -74,8 +74,7 @@ function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
       postedAtRaw,
       postedAtIso,
       reviewText,
-      fetchedAtIso: now,
-      locationName: null
+      fetchedAtIso: now
     });
   }
 

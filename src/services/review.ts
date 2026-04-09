@@ -14,8 +14,7 @@ const scrapedReviewSchema = z.object({
   postedAtRaw: z.string().min(1),
   postedAtIso: z.string().min(1),
   reviewText: z.string().min(1),
-  fetchedAtIso: z.string().min(1),
-  locationName: z.string().nullable().optional()
+  fetchedAtIso: z.string().min(1)
 });
 
 export type ScrapedReview = z.infer<typeof scrapedReviewSchema>;
@@ -53,8 +52,7 @@ export function syncReviews(db: Db, businessId: number, scrapedReviews: ScrapedR
       postedAtRaw: r.postedAtRaw,
       postedAtIso: r.postedAtIso,
       reviewText: r.reviewText,
-      fetchedAtIso: r.fetchedAtIso,
-      locationName: r.locationName ?? null
+      fetchedAtIso: r.fetchedAtIso
     }))
   ).returning().all();
 }

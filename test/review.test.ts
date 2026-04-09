@@ -20,7 +20,6 @@ function makeReview(overrides: Partial<Parameters<typeof syncReviews>[2][number]
     postedAtIso: "2026-04-01",
     reviewText: "Amazing shaved ice!",
     fetchedAtIso: new Date().toISOString(),
-    locationName: "Meet Fresh - Temple City",
     ...overrides
   };
 }

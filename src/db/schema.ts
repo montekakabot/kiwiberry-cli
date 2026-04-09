@@ -22,8 +22,7 @@ export const reviews = sqliteTable("reviews", {
   postedAtRaw: text("posted_at_raw").notNull(),
   postedAtIso: text("posted_at_iso").notNull(),
   reviewText: text("review_text").notNull(),
-  fetchedAtIso: text("fetched_at_iso").notNull(),
-  locationName: text("location_name")
+  fetchedAtIso: text("fetched_at_iso").notNull()
 }, (table) => [
   uniqueIndex("reviews_biz_user_date").on(table.businessId, table.userId, table.postedAtIso)
 ]);

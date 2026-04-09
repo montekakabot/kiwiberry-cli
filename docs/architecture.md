@@ -26,6 +26,7 @@ drizzle/
   0000_*.sql          — initial migration (tables)
   0001_*.sql          — add unique index on businesses.yelp_url
   0002_*.sql          — replace review_url with user_id, add composite unique index
+  0003_*.sql          — drop location_name column from reviews
 ```
 
 ## Database Layer
@@ -45,7 +46,7 @@ The production data directory is `~/.kiwiberry/`, with the DB file at `~/.kiwibe
 | Table | Key Columns | Constraints | Relationships |
 |---|---|---|---|
 | `businesses` | id, name, yelp_url, created_at | yelp_url UNIQUE | — |
-| `reviews` | id, business_id, user_id, reviewer_name, reviewer_location, rating, posted_at_raw, posted_at_iso, review_text, fetched_at_iso, location_name | UNIQUE(business_id, user_id, posted_at_iso) | FK → businesses (CASCADE) |
+| `reviews` | id, business_id, user_id, reviewer_name, reviewer_location, rating, posted_at_raw, posted_at_iso, review_text, fetched_at_iso | UNIQUE(business_id, user_id, posted_at_iso) | FK → businesses (CASCADE) |
 | `draft_responses` | id, review_id, response_text, created_at | — | FK → reviews (CASCADE) |
 | `config` | key (PK), value | — | — |
 
