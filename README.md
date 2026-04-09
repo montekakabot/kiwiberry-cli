@@ -38,6 +38,26 @@ bun run dev business remove 1
 # → {"removed":true,"id":1}
 ```
 
+### Manage configuration
+
+```bash
+# Get a config value (max-pages defaults to 2)
+bun run dev config get max-pages
+# → {"key":"max-pages","value":"2"}
+
+# Set a config value
+bun run dev config set max-pages 5
+# → {"key":"max-pages","value":"5"}
+
+# Get the updated value
+bun run dev config get max-pages
+# → {"key":"max-pages","value":"5"}
+
+# Unknown keys return an error
+bun run dev config get foo
+# stderr: Unknown config key: foo
+```
+
 ### Input validation
 
 - Business name must be non-empty
@@ -81,14 +101,17 @@ src/
   index.ts            — CLI entrypoint
   commands/
     business.ts       — business add/list/remove subcommands
+    config.ts         — config get/set subcommands
   db/
     schema.ts         — Drizzle ORM schema (4 tables)
     index.ts          — database init + migrations
   services/
     business.ts       — business CRUD with Zod validation
+    config.ts         — config key-value get/set with defaults
 test/
   db.test.ts          — database layer tests
   business.test.ts    — business service tests
+  config.test.ts      — config service tests
 drizzle/
   *.sql               — generated migration SQL
 docs/
