@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 export const businesses = sqliteTable("businesses", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  yelpUrl: text("yelp_url").notNull(),
+  yelpUrl: text("yelp_url").notNull().unique(),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`)

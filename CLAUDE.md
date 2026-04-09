@@ -33,3 +33,4 @@ bunx drizzle-kit generate # Generate migration after schema changes
 
 - Always create a new feature branch before working on a new issue
 - Always run `bun test` and `bun lint` before you open a new PR
+- When implementing Yelp scraping logic, ensure all data is extracted from the business page URL (e.g., https://www.yelp.com/biz/meet-fresh-temple-city?osq=meet+fresh).
