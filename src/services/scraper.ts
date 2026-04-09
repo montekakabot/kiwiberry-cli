@@ -41,7 +41,7 @@ function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
       : snapshot.substring(startIdx);
 
     // Extract userId from /url: /user_details?userid=...
-    const userIdMatch = /\/user_details\?userid=(\w+)/.exec(block);
+    const userIdMatch = /\/user_details\?userid=([\w-]+)/.exec(block);
     const userId = userIdMatch?.[1];
     if (!userId) continue;
 
