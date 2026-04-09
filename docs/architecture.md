@@ -92,13 +92,15 @@ syncReviews(db, businessId, scrapedReviews[])  // → newly inserted review rows
 ### Scraper (`src/services/scraper.ts`)
 
 ```typescript
-scrapeReviews(yelpUrl, maxPages)  // → ScrapedReview[]; shells out to openclaw browser
+scrapeReviews(yelpUrl, maxPages)         // → ScrapedReview[]; shells out to openclaw browser
+parseReviewsFromSnapshot(snapshot)       // → ScrapedReview[]; pure parsing of snapshot text
 ```
 
 - Checks that `openclaw` CLI is installed; throws helpfully if missing.
 - Navigates to the business Yelp URL with `?sort_by=date_desc` (Newest First).
 - Takes an AI snapshot via `openclaw browser snapshot` and parses review data from the structured text output.
 - Paginates by finding and clicking the "Next" link in the snapshot, up to `maxPages`.
+- Closes the browser after scraping completes (or on error) via a `finally` block.
 - Uses `execFileSync` (no shell) to avoid command injection.
 
 ## CLI Layer

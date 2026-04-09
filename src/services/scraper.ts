@@ -19,7 +19,7 @@ function checkOpenclawInstalled(): void {
   }
 }
 
-function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
+export function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
   const reviews: ScrapedReview[] = [];
   const now = new Date().toISOString();
 
@@ -30,8 +30,7 @@ function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
   for (const match of matches) {
     const reviewerName = match[1];
     // Skip non-reviewer regions
-    if (reviewerName === "Username") continue;
-    if (!(/\.$/.exec(reviewerName)) && !(/\.\.$/.exec(reviewerName))) continue;
+    if (!reviewerName.endsWith(".")) continue;
 
     const startIdx = match.index;
     // Bound the block by the next listitem
@@ -52,7 +51,7 @@ function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
     // Extract rating
     const ratingMatch = /img "(\d+) star rating"/.exec(block);
     const rating = ratingMatch ? parseInt(ratingMatch[1]) : null;
-    if (!rating) continue;
+    if (rating === null) continue;
 
     // Extract date
     const dateMatch = /- generic \[ref=\w+\]: ((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}, \d{4})/.exec(block);
@@ -86,23 +85,19 @@ export function scrapeReviews(yelpUrl: string, maxPages: number): ScrapedReview[
 
   const sortedUrl = `${yelpUrl.split("?")[0]}?sort_by=date_desc`;
 
-  ocBrowser(["navigate", sortedUrl], 30_000);
-  ocBrowser(["wait", "--text", "Recommended Reviews", "--timeout-ms", "15000"], 20_000);
-
   const allReviews: ScrapedReview[] = [];
 
   try {
+    ocBrowser(["navigate", sortedUrl], 30_000);
+    ocBrowser(["wait", "--text", "Recommended Reviews", "--timeout-ms", "15000"], 20_000);
+
     for (let page = 0; page < maxPages; page++) {
       if (page > 0) {
-        try {
-          const snapshot = ocBrowser(["snapshot"]);
-          const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(snapshot);
-          if (!nextMatch) break;
-          ocBrowser(["click", nextMatch[1]]);
-          ocBrowser(["wait", "--time", "3000"], 10_000);
-        } catch {
-          break;
-        }
+        const navSnapshot = ocBrowser(["snapshot"]);
+        const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(navSnapshot);
+        if (!nextMatch) break;
+        ocBrowser(["click", nextMatch[1]]);
+        ocBrowser(["wait", "--time", "3000"], 10_000);
       }
 
       const snapshot = ocBrowser(["snapshot"]);

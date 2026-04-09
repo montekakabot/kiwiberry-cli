@@ -65,7 +65,17 @@ Tests exercise `syncReviews`:
 | syncReviews deduplicates within the same batch | Duplicate entries in one call produce only one insert |
 | syncReviews throws for non-existent business | Throws `Business not found: N` for missing ID |
 
+### Scraper (test/scraper.test.ts)
+
+Tests exercise `parseReviewsFromSnapshot`:
+
+| Test | What It Verifies |
+|---|---|
+| parses a valid review block into a ScrapedReview | Extracts userId, name, location, rating, date, and text from snapshot |
+| skips non-reviewer regions | Regions not ending with "." (e.g., "Username") are ignored |
+| skips review blocks missing required fields | Missing userId, rating, date, or text → skipped |
+
 ## What Not to Test
 
 - **CLI Commands** — thin wiring layer, validate manually
-- **Scraper** — depends on external openclaw subprocess and live Yelp pages
+- **Scraper orchestration (`scrapeReviews`)** — depends on external openclaw subprocess and live Yelp pages
