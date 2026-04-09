@@ -42,10 +42,20 @@ Tests exercise `addBusiness`, `listBusinesses`, and `removeBusiness`:
 | removeBusiness deletes business and cascades to reviews and draft responses | FK cascade verified through service interface |
 | removeBusiness returns false for non-existent id | No-op delete returns `false` |
 
+### Config Service (test/config.test.ts)
+
+Tests exercise `getConfig` and `setConfig`:
+
+| Test | What It Verifies |
+|---|---|
+| getConfig returns default value for max-pages | Returns `"2"` before any explicit set |
+| getConfig throws for unknown key | Throws `Unknown config key` for unrecognized keys |
+| setConfig stores a value and getConfig retrieves it | Round-trip: set then get returns stored value |
+| setConfig overwrites an existing value | Second set replaces first; get returns latest |
+
 ## What to Test (per PRD)
 
 - **Review Service** — dedup behavior, sync returns only new reviews
-- **Config Service** — get/set, defaults, overwriting keys
 
 ## What Not to Test
 
