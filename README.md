@@ -26,7 +26,7 @@ bun run dev <command>
 
 ```bash
 # Register a business
-bun run dev business add "Taco Palace" "https://www.yelp.com/biz/taco-palace"
+bun run dev business add "Meet Fresh" "https://www.yelp.com/biz/meet-fresh-temple-city"
 # → {"id":1,"name":"Taco Palace","yelpUrl":"https://www.yelp.com/biz/taco-palace","createdAt":"2026-04-08 12:00:00"}
 
 # List all businesses
@@ -61,7 +61,7 @@ bun run dev config get foo
 ### Download reviews
 
 ```bash
-bun run dev business add "Meet Fresh" "https://www.yelp.com/biz/meet-fresh-temple-city"
+bun run dev fetch -b 1 --pages 1
 ```
 
 ### Input validation

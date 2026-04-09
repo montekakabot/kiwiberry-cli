@@ -92,22 +92,28 @@ export function scrapeReviews(yelpUrl: string, maxPages: number): ScrapedReview[
 
   const allReviews: ScrapedReview[] = [];
 
-  for (let page = 0; page < maxPages; page++) {
-    if (page > 0) {
-      try {
-        const snapshot = ocBrowser(["snapshot"]);
-        const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(snapshot);
-        if (!nextMatch) break;
-        ocBrowser(["click", nextMatch[1]]);
-        ocBrowser(["wait", "--time", "3000"], 10_000);
-      } catch {
-        break;
+  try {
+    for (let page = 0; page < maxPages; page++) {
+      if (page > 0) {
+        try {
+          const snapshot = ocBrowser(["snapshot"]);
+          const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(snapshot);
+          if (!nextMatch) break;
+          ocBrowser(["click", nextMatch[1]]);
+          ocBrowser(["wait", "--time", "3000"], 10_000);
+        } catch {
+          break;
+        }
       }
-    }
 
-    const snapshot = ocBrowser(["snapshot"]);
-    const pageReviews = parseReviewsFromSnapshot(snapshot);
-    allReviews.push(...pageReviews);
+      const snapshot = ocBrowser(["snapshot"]);
+      const pageReviews = parseReviewsFromSnapshot(snapshot);
+      allReviews.push(...pageReviews);
+    }
+  } finally {
+    try {
+      ocBrowser(["close"]);
+    } catch { /* browser may already be closed */ }
   }
 
   return allReviews;
