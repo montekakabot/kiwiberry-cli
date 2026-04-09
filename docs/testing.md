@@ -53,11 +53,19 @@ Tests exercise `getConfig` and `setConfig`:
 | setConfig stores a value and getConfig retrieves it | Round-trip: set then get returns stored value |
 | setConfig overwrites an existing value | Second set replaces first; get returns latest |
 
-## What to Test (per PRD)
+### Review Service (test/review.test.ts)
 
-- **Review Service** — dedup behavior, sync returns only new reviews
+Tests exercise `syncReviews`:
+
+| Test | What It Verifies |
+|---|---|
+| syncReviews inserts new reviews and returns them | Inserts multiple reviews, returns rows with id and businessId |
+| syncReviews deduplicates by businessId + userId + postedAtIso | Re-syncing same reviews returns empty array |
+| syncReviews rejects invalid review data | Zod validation: empty userId throws |
+| syncReviews deduplicates within the same batch | Duplicate entries in one call produce only one insert |
+| syncReviews throws for non-existent business | Throws `Business not found: N` for missing ID |
 
 ## What Not to Test
 
 - **CLI Commands** — thin wiring layer, validate manually
-- **Scraper** — depends on external OpenClaw subprocess and live Yelp pages
+- **Scraper** — depends on external openclaw subprocess and live Yelp pages
