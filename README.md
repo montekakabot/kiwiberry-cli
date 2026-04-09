@@ -58,6 +58,12 @@ bun run dev config get foo
 # stderr: Unknown config key: foo
 ```
 
+### Download reviews
+
+```bash
+bun run dev business add "Meet Fresh" "https://www.yelp.com/biz/meet-fresh-temple-city"
+```
+
 ### Input validation
 
 - Business name must be non-empty
