@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const businesses = sqliteTable("businesses", {
@@ -15,16 +15,18 @@ export const reviews = sqliteTable("reviews", {
   businessId: integer("business_id")
     .notNull()
     .references(() => businesses.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   reviewerName: text("reviewer_name").notNull(),
   reviewerLocation: text("reviewer_location"),
   rating: real("rating").notNull(),
   postedAtRaw: text("posted_at_raw").notNull(),
-  postedAtIso: text("posted_at_iso"),
+  postedAtIso: text("posted_at_iso").notNull(),
   reviewText: text("review_text").notNull(),
-  reviewUrl: text("review_url").notNull().unique(),
   fetchedAtIso: text("fetched_at_iso").notNull(),
   locationName: text("location_name")
-});
+}, (table) => [
+  uniqueIndex("reviews_biz_user_date").on(table.businessId, table.userId, table.postedAtIso)
+]);
 
 export const draftResponses = sqliteTable("draft_responses", {
   id: integer("id").primaryKey({ autoIncrement: true }),

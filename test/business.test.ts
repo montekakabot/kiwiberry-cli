@@ -74,11 +74,12 @@ describe("BusinessService", () => {
 
     db.insert(reviews).values({
       businessId: biz.id,
+      userId: "xyz789",
       reviewerName: "Bob",
       rating: 3,
       postedAtRaw: "Feb 1, 2025",
+      postedAtIso: "2025-02-01",
       reviewText: "Meh",
-      reviewUrl: "https://yelp.com/biz/doomed?hrid=xyz",
       fetchedAtIso: new Date().toISOString()
     }).run();
     const [review] = db.select().from(reviews).all();

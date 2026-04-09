@@ -15,6 +15,13 @@
       "when": 1775660295283,
       "tag": "0001_white_dracula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1775894400000,
+      "tag": "0002_replace_review_url_with_user_id",
+      "breakpoints": true
     }
   ]
 }
