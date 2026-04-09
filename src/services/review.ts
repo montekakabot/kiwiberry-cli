@@ -34,7 +34,9 @@ export function syncReviews(db: Db, businessId: number, scrapedReviews: ScrapedR
   const newReviews: ScrapedReview[] = [];
   for (const raw of scrapedReviews) {
     const parsed = scrapedReviewSchema.parse(raw);
-    if (!existingKeys.has(`${parsed.userId}:${parsed.postedAtIso}`)) {
+    const key = `${parsed.userId}:${parsed.postedAtIso}`;
+    if (!existingKeys.has(key)) {
+      existingKeys.add(key);
       newReviews.push(parsed);
     }
   }

@@ -82,6 +82,16 @@ describe("ReviewService", () => {
     expect(() => syncReviews(db, biz.id, [bad])).toThrow();
   });
 
+  test("syncReviews deduplicates within the same batch", () => {
+    const db = setupDb();
+    const biz = addBusiness(db, "Meet Fresh", "https://www.yelp.com/biz/meet-fresh-temple-city");
+    const review = makeReview();
+
+    const inserted = syncReviews(db, biz.id, [review, review]);
+
+    expect(inserted).toHaveLength(1);
+  });
+
   test("syncReviews throws for non-existent business", () => {
     const db = setupDb();
     expect(() => syncReviews(db, 999, [makeReview()])).toThrow("Business not found: 999");
