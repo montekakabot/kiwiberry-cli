@@ -10,12 +10,13 @@
 #   curl -fsSL https://raw.githubusercontent.com/montekakabot/kiwiberry-cli/main/install.sh | bash
 #
 # Environment variables:
-#   KIWIBERRY_VERSION      Release tag to install (default: latest)
-#   KIWIBERRY_INSTALL_DIR  Directory to install into (default: ~/.local/bin)
-#   KIWIBERRY_DOWNLOAD_URL Override asset URL (for testing / mirrors)
-#   KIWIBERRY_SHA256       Override expected SHA256 (for testing)
-#   KIWIBERRY_OS           Override detected OS (for testing)
-#   KIWIBERRY_ARCH         Override detected arch (for testing)
+#   KIWIBERRY_VERSION         Release tag to install (default: latest)
+#   KIWIBERRY_INSTALL_DIR     Directory to install into (default: ~/.local/bin)
+#   KIWIBERRY_DOWNLOAD_URL    Override asset URL (for testing / mirrors)
+#   KIWIBERRY_SHA256SUMS_URL  Override SHA256SUMS URL (for testing / mirrors)
+#   KIWIBERRY_SHA256          Override expected SHA256 (skips SHA256SUMS fetch)
+#   KIWIBERRY_OS              Override detected OS (for testing)
+#   KIWIBERRY_ARCH            Override detected arch (for testing)
 
 set -euo pipefail
 
@@ -71,6 +72,24 @@ resolve_url() {
   fi
 }
 
+resolve_sums_url() {
+  if [ -n "${KIWIBERRY_SHA256SUMS_URL:-}" ]; then
+    printf '%s\n' "$KIWIBERRY_SHA256SUMS_URL"
+    return
+  fi
+  if [ "$VERSION" = "latest" ]; then
+    printf 'https://github.com/%s/releases/latest/download/SHA256SUMS\n' "$REPO"
+  else
+    printf 'https://github.com/%s/releases/download/%s/SHA256SUMS\n' "$REPO" "$VERSION"
+  fi
+}
+
+expected_sum_for() {
+  local sums_file="$1"
+  local asset="$2"
+  awk -v asset="$asset" '$2 == asset { print $1; found=1; exit } END { exit !found }' "$sums_file"
+}
+
 download() {
   local url="$1"
   local dest="$2"
@@ -114,15 +133,31 @@ install_flow() {
   info "Downloading $url"
   download "$url" "$archive"
 
+  local actual expected
+  actual="$(sha256_of "$archive")"
+
   if [ -n "${KIWIBERRY_SHA256:-}" ]; then
-    local actual
-    actual="$(sha256_of "$archive")"
-    if [ "$actual" != "$KIWIBERRY_SHA256" ]; then
-      err "checksum mismatch: expected $KIWIBERRY_SHA256, got $actual"
+    expected="$KIWIBERRY_SHA256"
+  else
+    local sums_url sums_file
+    sums_url="$(resolve_sums_url)"
+    sums_file="$workdir/SHA256SUMS"
+    info "Fetching $sums_url"
+    if ! download "$sums_url" "$sums_file" 2>/dev/null; then
+      err "could not download SHA256SUMS from $sums_url — refusing to install without checksum verification"
       return 1
     fi
-    info "Checksum verified."
+    if ! expected="$(expected_sum_for "$sums_file" "$asset")"; then
+      err "SHA256SUMS does not contain an entry for $asset — refusing to install"
+      return 1
+    fi
   fi
+
+  if [ "$actual" != "$expected" ]; then
+    err "checksum mismatch for $asset: expected $expected, got $actual"
+    return 1
+  fi
+  info "Checksum verified."
 
   mkdir -p "$INSTALL_DIR"
   tar -xzf "$archive" -C "$workdir"
@@ -152,6 +187,10 @@ main() {
       local asset
       asset="$(detect_target)"
       resolve_url "$asset"
+      exit 0
+      ;;
+    --print-sums-url)
+      resolve_sums_url
       exit 0
       ;;
   esac

@@ -110,7 +110,7 @@ Once the workflow finishes, users pick up the new version via one of the paths d
 - **Manual download** — the new archives appear at <https://github.com/montekakabot/kiwiberry-cli/releases>.
 - **From source** — `git pull && bun run build`.
 
-`install.sh` computes and verifies SHA256 against `KIWIBERRY_SHA256` when set, but does not yet auto-fetch `SHA256SUMS` from the release (see follow-up below).
+`install.sh` fetches `SHA256SUMS` from the release by default and verifies the downloaded archive against it. Set `KIWIBERRY_SHA256` to pin an expected digest and skip the `SHA256SUMS` fetch (useful for mirrors or offline installs).
 
 ## Post-release verification
 
@@ -145,5 +145,4 @@ Future improvements tracked as separate issues:
 - Homebrew tap / formula (`brew install montekakabot/kiwiberry/kiwiberry`)
 - npm binary wrapper package (`npm i -g kiwiberry`)
 - Apple code-signing + notarization so macOS users don't need to clear the quarantine flag
-- `install.sh` auto-fetching `SHA256SUMS` from the release so checksum verification happens by default, not just when `KIWIBERRY_SHA256` is provided
 - `kiwiberry upgrade` subcommand
