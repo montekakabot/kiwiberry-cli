@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { parseReviewsFromSnapshot } from "../src/services/scraper";
+import { parseReviewsFromSnapshot, findNextPageRef } from "../src/services/scraper";
 
 const VALID_SNAPSHOT = `
 - list [ref=e1]:
@@ -13,6 +13,42 @@ const VALID_SNAPSHOT = `
       - paragraph [ref=e8]: Amazing shaved ice!
   - listitem [ref=e9]:
 `;
+
+describe("findNextPageRef", () => {
+  test("finds Next link ref on first page (no modifiers)", () => {
+    const snapshot = `
+- navigation "Pagination navigation":
+  - link "Next" [ref=e5334] [cursor=pointer]:
+    - /url: https://www.yelp.com/biz/meet-fresh-temple-city?start=10
+`;
+    expect(findNextPageRef(snapshot)).toBe("e5334");
+  });
+
+  test("finds Next link ref when it has [active] modifier", () => {
+    const snapshot = `
+- navigation "Pagination navigation":
+  - link "Next" [active] [ref=e2169] [cursor=pointer]:
+    - /url: https://www.yelp.com/biz/meet-fresh-temple-city?start=20
+`;
+    expect(findNextPageRef(snapshot)).toBe("e2169");
+  });
+
+  test("returns null when no Next link exists", () => {
+    const snapshot = `
+- navigation "Pagination navigation":
+  - link "Previous" [ref=e1234] [cursor=pointer]
+`;
+    expect(findNextPageRef(snapshot)).toBeNull();
+  });
+
+  test("ignores button 'Next' (e.g. photo gallery)", () => {
+    const snapshot = `
+- button "Next" [ref=e147] [cursor=pointer]:
+  - img [ref=e149]
+`;
+    expect(findNextPageRef(snapshot)).toBeNull();
+  });
+});
 
 describe("parseReviewsFromSnapshot", () => {
   test("skips non-reviewer regions", () => {

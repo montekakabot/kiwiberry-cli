@@ -19,6 +19,12 @@ function checkOpenclawInstalled(): void {
   }
 }
 
+export function findNextPageRef(snapshot: string): string | null {
+  // Match: link "Next" [optional modifiers like [active]] [ref=xxx]
+  const match = /link "Next"(?:\s\[\w+\])*\s\[ref=(\w+)\]/.exec(snapshot);
+  return match?.[1] ?? null;
+}
+
 export function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
   const reviews: ScrapedReview[] = [];
   const now = new Date().toISOString();
@@ -93,9 +99,9 @@ export function scrapeReviews(yelpUrl: string, maxPages: number): ScrapedReview[
   for (let page = 0; page < maxPages; page++) {
     if (page > 0) {
       const navSnapshot = ocBrowser(["snapshot"]);
-      const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(navSnapshot);
-      if (!nextMatch) break;
-      ocBrowser(["click", nextMatch[1]]);
+      const nextRef = findNextPageRef(navSnapshot);
+      if (!nextRef) break;
+      ocBrowser(["click", nextRef]);
       ocBrowser(["wait", "--time", "3000"], 10_000);
     }
 
