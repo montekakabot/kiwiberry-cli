@@ -35,11 +35,12 @@ jobs:
           set -euo pipefail
           for target in darwin-arm64 darwin-x64; do
             bin="dist/kiwiberry-${target}"
-            if ! codesign -dvv "$bin" 2>&1 | grep -q 'Signature='; then
-              echo "ERROR: $bin is unsigned — macOS Gatekeeper will SIGKILL it" >&2
+            if ! codesign --verify "$bin" 2>/dev/null; then
+              echo "ERROR: $bin has no valid code signature — macOS will SIGKILL it" >&2
               codesign -dvv "$bin" 2>&1 || true
               exit 1
             fi
+            codesign -dvv "$bin" 2>&1 | grep -E 'Signature|Authority|Identifier' || true
           done
 
       - name: Upload darwin binaries
