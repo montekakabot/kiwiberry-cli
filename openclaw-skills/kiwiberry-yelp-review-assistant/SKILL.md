@@ -1,6 +1,6 @@
 ---
 name: kiwiberry-yelp-review-assistant
-description: Use the local Kiwiberry CLI to monitor Yelp reviews for tracked businesses, fetch new reviews through OpenClaw, inspect stored reviews and prior drafts, and save draft responses back into Kiwiberry. Use when the user wants to check for new Yelp reviews, review recent feedback, or draft a business-safe Yelp response for a stored review.
+description: Use the local Kiwiberry CLI to monitor Yelp reviews for tracked businesses, fetch new reviews through OpenClaw, inspect stored reviews and prior drafts, save draft responses back into Kiwiberry, and prepare operator-friendly email digests for new-review alerts. Use when the user wants to check for new Yelp reviews, review recent feedback, draft business-safe Yelp responses, or automate review-monitoring emails.
 ---
 
 # Kiwiberry Yelp review assistant
@@ -73,7 +73,7 @@ kiwiberry responses <reviewId>
 
 If drafts already exist, summarize them and only create another one if the user still wants a new draft.
 
-### 5. Save a draft response
+### 5. Save draft responses
 
 This skill saves drafts into Kiwiberry instead of only composing them in chat.
 
@@ -96,6 +96,36 @@ After saving, report:
 - the draft text that was saved
 
 Do not claim the message was posted to Yelp. Kiwiberry stores drafts only.
+
+When the workflow is for outbound review monitoring, prefer saving three drafts per new review unless the user asked for a different count.
+
+### 6. Prepare an email digest for operators
+
+When the user wants review alerts by email, send one digest per fetch run only when new reviews were found.
+
+Preferred structure:
+
+- Subject: `<business name> Yelp review alert — <N> new review` or `... <N> new reviews`
+- First line: short forwardable summary, for example `Forwardable update for ops: <business name> received <N> new Yelp review(s).`
+- For each review, include in this order:
+  1. reviewer name
+  2. rating
+  3. posted date
+  4. direct Yelp business URL when helpful
+  5. full review text
+  6. exactly three labeled draft responses
+- Separate reviews with a clear divider such as `==========`
+- End with a short operator note such as `Drafts are saved in Kiwiberry for reuse/editing.`
+
+Formatting rules:
+
+- Prefer plain text over HTML for easy forwarding
+- Make the subject scannable from an inbox view
+- Put the business name, review count, and source (`Yelp`) in the subject
+- Keep the top summary to 1-2 lines so an operator can forward without editing much
+- Avoid giant prose blocks; use labels and spacing so the email can double as an internal handoff
+
+If Mail app sending is available and the user approved email delivery, use AppleScript/`osascript` to send via the local Mail app.
 
 ## Drafting rules
 
