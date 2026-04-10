@@ -1,10 +1,15 @@
 import { mkdirSync } from "fs";
+import { homedir } from "os";
 import { join } from "path";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema";
 import { bundledMigrations } from "./migrations";
 import { applyBundledMigrations } from "./migrator";
+
+export function defaultDataDir(): string {
+  return process.env.KIWIBERRY_DB_DIR ?? join(homedir(), ".kiwiberry");
+}
 
 export function getDatabase(dataDir: string) {
   mkdirSync(dataDir, { recursive: true });

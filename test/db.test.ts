@@ -1,9 +1,9 @@
 import { describe, test, expect, afterEach } from "bun:test";
 import { rmSync, existsSync } from "fs";
+import { homedir, tmpdir } from "os";
 import { join } from "path";
-import { tmpdir } from "os";
 import { eq } from "drizzle-orm";
-import { getDatabase } from "../src/db";
+import { defaultDataDir, getDatabase } from "../src/db";
 import { businesses, reviews, draftResponses, config } from "../src/db/schema";
 
 function makeTempDir(): string {
@@ -79,6 +79,23 @@ describe("getDatabase", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].name).toBe("Persistent Biz");
+  });
+
+  test("defaultDataDir honors KIWIBERRY_DB_DIR env var", () => {
+    const original = process.env.KIWIBERRY_DB_DIR;
+    try {
+      process.env.KIWIBERRY_DB_DIR = "/tmp/kiwiberry-env-override";
+      expect(defaultDataDir()).toBe("/tmp/kiwiberry-env-override");
+
+      delete process.env.KIWIBERRY_DB_DIR;
+      expect(defaultDataDir()).toBe(join(homedir(), ".kiwiberry"));
+    } finally {
+      if (original === undefined) {
+        delete process.env.KIWIBERRY_DB_DIR;
+      } else {
+        process.env.KIWIBERRY_DB_DIR = original;
+      }
+    }
   });
 
   test("deleting a business cascades to reviews and draft responses", () => {

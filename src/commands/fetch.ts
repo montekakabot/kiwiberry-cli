@@ -1,15 +1,13 @@
 import { defineCommand } from "citty";
 import { eq } from "drizzle-orm";
-import { homedir } from "os";
-import { join } from "path";
-import { getDatabase } from "../db";
+import { defaultDataDir, getDatabase } from "../db";
 import { businesses } from "../db/schema";
 import { getConfig } from "../services/config";
 import { syncReviews } from "../services/review";
 import { scrapeReviews } from "../services/scraper";
 
 function getDb() {
-  return getDatabase(join(homedir(), ".kiwiberry"));
+  return getDatabase(defaultDataDir());
 }
 
 export default defineCommand({
