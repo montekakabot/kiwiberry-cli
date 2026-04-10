@@ -42,11 +42,12 @@ describe("getDatabase", () => {
 
     db.insert(reviews).values({
       businessId: biz.id,
+      userId: "abc123",
       reviewerName: "Alice",
       rating: 5,
       postedAtRaw: "Jan 1, 2025",
+      postedAtIso: "2025-01-01",
       reviewText: "Great!",
-      reviewUrl: "https://yelp.com/biz/test?hrid=abc",
       fetchedAtIso: new Date().toISOString()
     }).run();
     const [review] = db.select().from(reviews).all();
@@ -90,11 +91,12 @@ describe("getDatabase", () => {
 
     db.insert(reviews).values({
       businessId: biz.id,
+      userId: "xyz789",
       reviewerName: "Bob",
       rating: 3,
       postedAtRaw: "Feb 1, 2025",
+      postedAtIso: "2025-02-01",
       reviewText: "Meh",
-      reviewUrl: "https://yelp.com/biz/doomed?hrid=xyz",
       fetchedAtIso: new Date().toISOString()
     }).run();
     const [review] = db.select().from(reviews).all();
