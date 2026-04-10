@@ -85,6 +85,24 @@ bun run dev business add "Shop B" "https://www.yelp.com/biz/shop"
 # stderr: A business with this Yelp URL is already registered
 ```
 
+## Build a standalone binary
+
+Compile Kiwiberry to a single executable that runs without Bun installed:
+
+```bash
+bun run build
+# → dist/kiwiberry
+```
+
+`bun build --compile` bundles the runtime, all dependencies, and every Drizzle migration SQL file into one self-contained binary. Copy `dist/kiwiberry` anywhere on `PATH` and run it directly:
+
+```bash
+./dist/kiwiberry business list
+./dist/kiwiberry config get max-pages
+```
+
+The binary auto-initializes `~/.kiwiberry/` and applies bundled migrations on first run, exactly like `bun run dev`. `fetch` still requires the [OpenClaw](https://openclaw.dev/) browser CLI on the host machine.
+
 ## Data storage
 
 Data is stored in `~/.kiwiberry/kiwiberry.db` (SQLite). The database and directory are created automatically on first use. To start fresh, delete that file.
@@ -97,6 +115,7 @@ bun test                 # Run all tests
 bun test test/db.test.ts # Run a single test file
 bun run lint             # ESLint with strict type-checking
 bun run lint -- --fix    # Auto-fix lint issues
+bun run build            # Compile a standalone binary → dist/kiwiberry
 bunx drizzle-kit generate # Generate migration after schema changes
 ```
 

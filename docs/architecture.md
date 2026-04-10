@@ -15,6 +15,8 @@ src/
   db/
     schema.ts         — Drizzle ORM schema (4 tables)
     index.ts          — getDatabase(dataDir) auto-init + migrations
+    migrator.ts       — applyBundledMigrations: statement-breakpoint-aware runner
+    migrations.ts     — drizzle/*.sql imported as text so `bun build --compile` embeds them
   services/
     business.ts       — business CRUD with Zod validation
     config.ts         — config key-value get/set with defaults
@@ -43,7 +45,9 @@ drizzle/
 getDatabase(dataDir: string): BunSQLiteDatabase
 ```
 
-Takes a directory path, creates it if missing, opens SQLite with WAL mode + foreign keys enabled, runs all pending Drizzle migrations, and returns a Drizzle DB instance.
+Takes a directory path, creates it if missing, opens SQLite with WAL mode + foreign keys enabled, runs all pending bundled migrations via `applyBundledMigrations`, and returns a Drizzle DB instance.
+
+Migration SQL files under `drizzle/` are imported as text (`with { type: "text" }`) in `db/migrations.ts`, so `bun build --compile` inlines every statement into the standalone binary — no runtime filesystem lookups against the source tree. The runner tracks applied migrations in a `__kiwiberry_migrations__` table keyed by journal idx, splits each SQL file on `--> statement-breakpoint`, and applies each pending migration inside a transaction.
 
 The production data directory is `~/.kiwiberry/`, with the DB file at `~/.kiwiberry/kiwiberry.db`.
 
