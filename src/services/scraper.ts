@@ -87,27 +87,21 @@ export function scrapeReviews(yelpUrl: string, maxPages: number): ScrapedReview[
 
   const allReviews: ScrapedReview[] = [];
 
-  try {
-    ocBrowser(["navigate", sortedUrl], 30_000);
-    ocBrowser(["wait", "--text", "Recommended Reviews", "--timeout-ms", "15000"], 20_000);
+  ocBrowser(["navigate", sortedUrl], 30_000);
+  ocBrowser(["wait", "--text", "Recommended Reviews", "--timeout-ms", "15000"], 20_000);
 
-    for (let page = 0; page < maxPages; page++) {
-      if (page > 0) {
-        const navSnapshot = ocBrowser(["snapshot"]);
-        const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(navSnapshot);
-        if (!nextMatch) break;
-        ocBrowser(["click", nextMatch[1]]);
-        ocBrowser(["wait", "--time", "3000"], 10_000);
-      }
-
-      const snapshot = ocBrowser(["snapshot"]);
-      const pageReviews = parseReviewsFromSnapshot(snapshot);
-      allReviews.push(...pageReviews);
+  for (let page = 0; page < maxPages; page++) {
+    if (page > 0) {
+      const navSnapshot = ocBrowser(["snapshot"]);
+      const nextMatch = /link "Next" \[ref=(\w+)\]/.exec(navSnapshot);
+      if (!nextMatch) break;
+      ocBrowser(["click", nextMatch[1]]);
+      ocBrowser(["wait", "--time", "3000"], 10_000);
     }
-  } finally {
-    try {
-      ocBrowser(["close"]);
-    } catch { /* browser may already be closed */ }
+
+    const snapshot = ocBrowser(["snapshot"]);
+    const pageReviews = parseReviewsFromSnapshot(snapshot);
+    allReviews.push(...pageReviews);
   }
 
   return allReviews;
