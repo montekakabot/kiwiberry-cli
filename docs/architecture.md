@@ -22,6 +22,7 @@ test/
   business.test.ts    — business service tests
   config.test.ts      — config service tests
   review.test.ts      — review service tests
+  scraper.test.ts     — scraper parsing / helper tests
 drizzle/
   0000_*.sql          — initial migration (tables)
   0001_*.sql          — add unique index on businesses.yelp_url
@@ -92,16 +93,43 @@ syncReviews(db, businessId, scrapedReviews[])  // → newly inserted review rows
 ### Scraper (`src/services/scraper.ts`)
 
 ```typescript
-scrapeReviews(yelpUrl, maxPages)         // → ScrapedReview[]; shells out to openclaw browser
+scrapeReviews(yelpUrl, maxPages)         // → ScrapedReview[]; orchestrates openclaw browser
 parseReviewsFromSnapshot(snapshot)       // → ScrapedReview[]; pure parsing of snapshot text
+findNextPageRef(snapshot)                // → string | null; finds "Next" link ref for pagination
+extractTargetId(jsonOutput)              // → string | null; parses `openclaw browser open` output
+extractTabIds(jsonOutput)                // → string[];      parses `openclaw browser tabs` output
 ```
 
-- Checks that `openclaw` CLI is installed; throws helpfully if missing.
-- Navigates to the business Yelp URL with `?sort_by=date_desc` (Newest First).
-- Takes an AI snapshot via `openclaw browser snapshot` and parses review data from the structured text output.
-- Paginates by finding and clicking the "Next" link in the snapshot, up to `maxPages`.
-- Closes the browser after scraping completes (or on error) via a `finally` block.
-- Uses `execFileSync` (no shell) to avoid command injection.
+All `openclaw browser` invocations go through a single `ocBrowser(args, timeoutMs)` helper that shells out with `execFileSync` (no shell — command injection safe) and a 30s default timeout.
+
+**Orchestration flow (`scrapeReviews`):**
+
+1. Verifies the `openclaw` CLI is installed; throws a helpful install hint if missing.
+2. Normalizes the URL to `<yelpUrl>?sort_by=date_desc` (Newest First).
+3. Snapshots existing browser tabs via `openclaw browser --json tabs` so it can later tell which tab(s) it opened.
+4. Opens the URL (`openclaw browser open`), then re-reads the tab list and diffs to record the newly-opened tab IDs.
+5. Waits for the text "Recommended Reviews" to appear (`openclaw browser wait --text …`, 15s page-load timeout).
+6. For each page up to `maxPages`:
+   - On pages after the first, takes a snapshot, locates the "Next" link ref with `findNextPageRef`, clicks it, and waits 3s for the next page to render. Breaks the loop if no Next link exists.
+   - Takes a snapshot and runs `parseReviewsFromSnapshot` to extract review rows.
+7. In a `finally` block, closes only the tabs that *this* invocation opened. The browser itself is intentionally left running so subsequent fetches (and user sessions) can reuse it — this avoids re-triggering DataDome CAPTCHAs.
+
+**Output handling:** `openclaw` can print plugin banner lines on stdout before its JSON body. `stripNonJsonPrefix` trims everything up to the first `{` so `JSON.parse` can succeed. Both `extractTargetId` and `extractTabIds` use it.
+
+**Snapshot parsing (`parseReviewsFromSnapshot`):** Splits the snapshot on `- region "…" [ref=…]:` markers, then for each region extracts:
+
+| Field | Source regex |
+|---|---|
+| `userId` | `/user_details?userid=…` URL in the region |
+| `reviewerName` | region title (must end with `.` — skips non-reviewer regions like "Username" or "Recommended Reviews") |
+| `reviewerLocation` | `- generic` line matching `City, ST` pattern (nullable) |
+| `rating` | `img "N star rating"` |
+| `postedAtRaw` / `postedAtIso` | `- generic` line with a `Mon DD, YYYY` date, converted to `YYYY-MM-DD` |
+| `reviewText` | `- paragraph` line content |
+
+Any region missing `userId`, `rating`, date, or review text is skipped silently.
+
+**Pagination parsing (`findNextPageRef`):** Matches `link "Next"(\s\[\w+\])*\s\[ref=…]`. The optional `\[\w+\]` group lets it match both `link "Next" [ref=…]` (first page) and `link "Next" [active] [ref=…]` (subsequent pages). It intentionally does not match `button "Next"`, which Yelp uses for the photo gallery.
 
 ## CLI Layer
 

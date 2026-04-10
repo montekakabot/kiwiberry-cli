@@ -67,15 +67,44 @@ Tests exercise `syncReviews`:
 
 ### Scraper (test/scraper.test.ts)
 
-Tests exercise `parseReviewsFromSnapshot`:
+Tests exercise the pure helpers exported from `src/services/scraper.ts`. The end-to-end `scrapeReviews` orchestration is not tested here (see *What Not to Test*).
+
+`extractTabIds` — parses `openclaw browser --json tabs` output:
+
+| Test | What It Verifies |
+|---|---|
+| extracts all tab targetIds from openclaw tabs JSON output | Returns every `targetId` in the `tabs` array, in order |
+| returns empty array when no tabs | `{"tabs": []}` → `[]` |
+| returns empty array for invalid JSON | Malformed input doesn't throw |
+| strips non-JSON plugin output prefix before parsing | Plugin banner lines printed before the JSON body are ignored |
+
+`extractTargetId` — parses `openclaw browser open` output:
+
+| Test | What It Verifies |
+|---|---|
+| extracts targetId from openclaw open JSON output | Returns the top-level `targetId` string |
+| returns null when output has no targetId | `{}` → `null` |
+| returns null for invalid JSON | Malformed input doesn't throw |
+| strips non-JSON plugin output prefix before parsing | Plugin banner lines printed before the JSON body are ignored |
+
+`findNextPageRef` — locates the pagination "Next" link ref in a snapshot:
+
+| Test | What It Verifies |
+|---|---|
+| finds Next link ref on first page (no modifiers) | Matches `link "Next" [ref=…]` |
+| finds Next link ref when it has [active] modifier | Matches `link "Next" [active] [ref=…]` |
+| returns null when no Next link exists | Missing Next link → `null` |
+| ignores button "Next" (e.g. photo gallery) | Only `link` is matched, not `button` |
+
+`parseReviewsFromSnapshot` — extracts reviews from a Yelp AI snapshot:
 
 | Test | What It Verifies |
 |---|---|
 | parses a valid review block into a ScrapedReview | Extracts userId, name, location, rating, date, and text from snapshot |
-| skips non-reviewer regions | Regions not ending with "." (e.g., "Username") are ignored |
-| skips review blocks missing required fields | Missing userId, rating, date, or text → skipped |
+| skips non-reviewer regions | Regions whose title doesn't end with `.` (e.g. "Username", "Recommended Reviews") are ignored |
+| skips review blocks missing required fields | Missing userId, rating, date, or text → the block is skipped |
 
 ## What Not to Test
 
 - **CLI Commands** — thin wiring layer, validate manually
-- **Scraper orchestration (`scrapeReviews`)** — depends on external openclaw subprocess and live Yelp pages
+- **Scraper orchestration (`scrapeReviews`)** — depends on the external `openclaw` subprocess and live Yelp pages. Orchestration logic (tab-diff open/close, pagination loop, "Recommended Reviews" wait) is validated manually; the pure helpers it composes (`extractTabIds`, `extractTargetId`, `findNextPageRef`, `parseReviewsFromSnapshot`) are covered above.
