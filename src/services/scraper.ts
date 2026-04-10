@@ -19,6 +19,35 @@ function checkOpenclawInstalled(): void {
   }
 }
 
+// openclaw prints plugin banners on stdout before JSON output. Strip any
+// non-JSON prefix so JSON.parse can succeed.
+function stripNonJsonPrefix(output: string): string {
+  const firstBrace = output.indexOf("{");
+  return firstBrace >= 0 ? output.substring(firstBrace) : output;
+}
+
+export function extractTargetId(jsonOutput: string): string | null {
+  try {
+    const parsed = JSON.parse(stripNonJsonPrefix(jsonOutput)) as { targetId?: unknown };
+    return typeof parsed.targetId === "string" ? parsed.targetId : null;
+  } catch {
+    return null;
+  }
+}
+
+export function extractTabIds(jsonOutput: string): string[] {
+  try {
+    const parsed = JSON.parse(stripNonJsonPrefix(jsonOutput)) as { tabs?: unknown };
+    if (!Array.isArray(parsed.tabs)) return [];
+    return parsed.tabs
+      .filter((t): t is { targetId: string } =>
+        typeof t === "object" && t !== null && typeof (t as { targetId?: unknown }).targetId === "string")
+      .map(t => t.targetId);
+  } catch {
+    return [];
+  }
+}
+
 export function findNextPageRef(snapshot: string): string | null {
   // Match: link "Next" [optional modifiers like [active]] [ref=xxx]
   const match = /link "Next"(?:\s\[\w+\])*\s\[ref=(\w+)\]/.exec(snapshot);
@@ -93,21 +122,40 @@ export function scrapeReviews(yelpUrl: string, maxPages: number): ScrapedReview[
 
   const allReviews: ScrapedReview[] = [];
 
-  ocBrowser(["navigate", sortedUrl], 30_000);
-  ocBrowser(["wait", "--text", "Recommended Reviews", "--timeout-ms", "15000"], 20_000);
+  // Record tabs that already existed so we can close only the ones we add.
+  const tabsBefore = new Set(extractTabIds(ocBrowser(["--json", "tabs"])));
+  const openedTabIds: string[] = [];
 
-  for (let page = 0; page < maxPages; page++) {
-    if (page > 0) {
-      const navSnapshot = ocBrowser(["snapshot"]);
-      const nextRef = findNextPageRef(navSnapshot);
-      if (!nextRef) break;
-      ocBrowser(["click", nextRef]);
-      ocBrowser(["wait", "--time", "3000"], 10_000);
+  try {
+    ocBrowser(["open", sortedUrl], 30_000);
+
+    // Diff to find the tab(s) we just added.
+    const tabsAfter = extractTabIds(ocBrowser(["--json", "tabs"]));
+    for (const id of tabsAfter) {
+      if (!tabsBefore.has(id)) openedTabIds.push(id);
     }
 
-    const snapshot = ocBrowser(["snapshot"]);
-    const pageReviews = parseReviewsFromSnapshot(snapshot);
-    allReviews.push(...pageReviews);
+    ocBrowser(["wait", "--text", "Recommended Reviews", "--timeout-ms", "15000"], 20_000);
+
+    for (let page = 0; page < maxPages; page++) {
+      if (page > 0) {
+        const navSnapshot = ocBrowser(["snapshot"]);
+        const nextRef = findNextPageRef(navSnapshot);
+        if (!nextRef) break;
+        ocBrowser(["click", nextRef]);
+        ocBrowser(["wait", "--time", "3000"], 10_000);
+      }
+
+      const snapshot = ocBrowser(["snapshot"]);
+      const pageReviews = parseReviewsFromSnapshot(snapshot);
+      allReviews.push(...pageReviews);
+    }
+  } finally {
+    for (const tabId of openedTabIds) {
+      try {
+        ocBrowser(["close", tabId]);
+      } catch { /* tab may already be gone */ }
+    }
   }
 
   return allReviews;

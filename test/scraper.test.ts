@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { parseReviewsFromSnapshot, findNextPageRef } from "../src/services/scraper";
+import { parseReviewsFromSnapshot, findNextPageRef, extractTargetId, extractTabIds } from "../src/services/scraper";
 
 const VALID_SNAPSHOT = `
 - list [ref=e1]:
@@ -13,6 +13,69 @@ const VALID_SNAPSHOT = `
       - paragraph [ref=e8]: Amazing shaved ice!
   - listitem [ref=e9]:
 `;
+
+describe("extractTabIds", () => {
+  test("extracts all tab targetIds from openclaw tabs JSON output", () => {
+    const output = `{
+  "tabs": [
+    { "targetId": "AAA111", "title": "Blank", "url": "about:blank", "type": "page" },
+    { "targetId": "BBB222", "title": "Yelp", "url": "https://yelp.com", "type": "page" }
+  ]
+}`;
+    expect(extractTabIds(output)).toEqual(["AAA111", "BBB222"]);
+  });
+
+  test("returns empty array when no tabs", () => {
+    expect(extractTabIds("{\"tabs\": []}")).toEqual([]);
+  });
+
+  test("returns empty array for invalid JSON", () => {
+    expect(extractTabIds("not json")).toEqual([]);
+  });
+
+  test("strips non-JSON plugin output prefix before parsing", () => {
+    const output = `[plugins] memory-lancedb-pro: smart extraction enabled
+[plugins] mdMirror: resolved 2 agent workspace(s)
+{
+  "tabs": [
+    { "targetId": "AAA111", "title": "Yelp", "url": "https://yelp.com", "type": "page" }
+  ]
+}`;
+    expect(extractTabIds(output)).toEqual(["AAA111"]);
+  });
+});
+
+describe("extractTargetId", () => {
+  test("extracts targetId from openclaw open JSON output", () => {
+    const output = `{
+  "targetId": "650CD55DB4290A3379C83D3238AD8C6E",
+  "title": "",
+  "url": "about:blank",
+  "type": "page"
+}`;
+    expect(extractTargetId(output)).toBe("650CD55DB4290A3379C83D3238AD8C6E");
+  });
+
+  test("returns null when output has no targetId", () => {
+    expect(extractTargetId("{}")).toBeNull();
+  });
+
+  test("returns null for invalid JSON", () => {
+    expect(extractTargetId("not json")).toBeNull();
+  });
+
+  test("strips non-JSON plugin output prefix before parsing", () => {
+    const output = `[plugins] memory-lancedb-pro: smart extraction enabled
+[plugins] hook runner initialized with 1 registered hooks
+{
+  "targetId": "650CD55DB4290A3379C83D3238AD8C6E",
+  "title": "",
+  "url": "about:blank",
+  "type": "page"
+}`;
+    expect(extractTargetId(output)).toBe("650CD55DB4290A3379C83D3238AD8C6E");
+  });
+});
 
 describe("findNextPageRef", () => {
   test("finds Next link ref on first page (no modifiers)", () => {
