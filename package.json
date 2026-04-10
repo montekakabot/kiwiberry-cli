@@ -6,6 +6,7 @@
     "dev": "bun run src/index.ts",
     "test": "bun test",
     "lint": "eslint .",
+    "build": "bun build --compile --minify --sourcemap src/index.ts --outfile dist/kiwiberry",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
