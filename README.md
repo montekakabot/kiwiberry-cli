@@ -145,12 +145,14 @@ bunx drizzle-kit generate # Generate migration after schema changes
 
 ### Cutting a release
 
-Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs tests + lint, cross-compiles all 5 targets, packages each binary with the README into a `tar.gz` (or `zip` on Windows), writes a `SHA256SUMS` file, and uploads everything to a GitHub Release.
+See [docs/releasing.md](docs/releasing.md) for the full checklist, rollback procedure, and workflow details. Short version:
 
 ```bash
 git tag v0.2.0
 git push origin v0.2.0
 ```
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs tests + lint, cross-compiles all 5 targets, packages each binary with the README into a `tar.gz` (or `zip` on Windows), writes `SHA256SUMS`, and uploads everything to a GitHub Release.
 
 ## Project structure
 
