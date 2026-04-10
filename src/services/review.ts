@@ -19,6 +19,13 @@ const scrapedReviewSchema = z.object({
 
 export type ScrapedReview = z.infer<typeof scrapedReviewSchema>;
 
+export function listReviews(db: Db, businessId: number) {
+  const biz = db.select().from(businesses).where(eq(businesses.id, businessId)).get();
+  if (!biz) throw new Error(`Business not found: ${businessId}`);
+
+  return db.select().from(reviews).where(eq(reviews.businessId, businessId)).all();
+}
+
 export function syncReviews(db: Db, businessId: number, scrapedReviews: ScrapedReview[]) {
   const biz = db.select().from(businesses).where(eq(businesses.id, businessId)).get();
   if (!biz) throw new Error(`Business not found: ${businessId}`);

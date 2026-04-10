@@ -55,7 +55,7 @@ Tests exercise `getConfig` and `setConfig`:
 
 ### Review Service (test/review.test.ts)
 
-Tests exercise `syncReviews`:
+Tests exercise `syncReviews` and `listReviews`:
 
 | Test | What It Verifies |
 |---|---|
@@ -64,6 +64,10 @@ Tests exercise `syncReviews`:
 | syncReviews rejects invalid review data | Zod validation: empty userId throws |
 | syncReviews deduplicates within the same batch | Duplicate entries in one call produce only one insert |
 | syncReviews throws for non-existent business | Throws `Business not found: N` for missing ID |
+| listReviews returns all reviews for a business with every field populated | Returns all stored fields: id, businessId, userId, reviewerName, reviewerLocation, rating, postedAtRaw, postedAtIso, reviewText, fetchedAtIso |
+| listReviews returns empty array when business has no reviews | Existing business with no rows returns `[]` |
+| listReviews only returns reviews for the specified business | Rows belonging to other businesses are excluded |
+| listReviews throws for non-existent business | Throws `Business not found: N` for missing ID |
 
 ### Scraper (test/scraper.test.ts)
 

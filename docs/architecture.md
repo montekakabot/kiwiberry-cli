@@ -9,6 +9,7 @@ src/
     business.ts       — business add/list/remove subcommands
     config.ts         — config get/set subcommands
     fetch.ts          — fetch reviews for a business
+    reviews.ts        — list stored reviews for a business
   db/
     schema.ts         — Drizzle ORM schema (4 tables)
     index.ts          — getDatabase(dataDir) auto-init + migrations
@@ -83,12 +84,13 @@ getConfig(db, key)         // → string; returns DB value, then default, or thr
 
 ```typescript
 syncReviews(db, businessId, scrapedReviews[])  // → newly inserted review rows
+listReviews(db, businessId)                    // → all stored reviews for the business
 ```
 
-- Validates each review with Zod (userId, reviewerName, rating 1–5, postedAtRaw, postedAtIso, reviewText, fetchedAtIso required).
-- Deduplicates by composite key: `businessId + userId + postedAtIso`.
-- Dedup covers both existing DB rows and duplicates within the same batch.
-- Throws if `businessId` does not exist.
+- `syncReviews` validates each review with Zod (userId, reviewerName, rating 1–5, postedAtRaw, postedAtIso, reviewText, fetchedAtIso required).
+- `syncReviews` deduplicates by composite key: `businessId + userId + postedAtIso`. Dedup covers both existing DB rows and duplicates within the same batch.
+- `listReviews` returns every stored review row for the business, scoped by `businessId`. Returns `[]` if the business has no reviews.
+- Both functions throw `Business not found: N` if `businessId` does not exist.
 
 ### Scraper (`src/services/scraper.ts`)
 
@@ -145,6 +147,7 @@ Uses citty (unjs/citty). The root command is defined in `src/index.ts`. Commands
 | `config get <key>` | `{"key":"...","value":"..."}` | "Unknown config key: ..." |
 | `config set <key> <value>` | `{"key":"...","value":"..."}` | — |
 | `fetch -b <id> [--pages N]` | JSON array of new reviews | "Business not found" / "openclaw CLI is not installed" |
+| `reviews -b <id>` | JSON array of all stored reviews | "Business not found" / "Business ID must be a number" |
 
 All CLI output goes as JSON on stdout. Human-readable error messages go on stderr.
 

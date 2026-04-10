@@ -4,7 +4,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { getDatabase } from "../src/db";
 import { addBusiness } from "../src/services/business";
-import { syncReviews } from "../src/services/review";
+import { listReviews, syncReviews } from "../src/services/review";
 
 function makeTempDir(): string {
   return join(tmpdir(), `kiwiberry-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -94,5 +94,50 @@ describe("ReviewService", () => {
   test("syncReviews throws for non-existent business", () => {
     const db = setupDb();
     expect(() => syncReviews(db, 999, [makeReview()])).toThrow("Business not found: 999");
+  });
+
+  test("listReviews throws for non-existent business", () => {
+    const db = setupDb();
+    expect(() => listReviews(db, 999)).toThrow("Business not found: 999");
+  });
+
+  test("listReviews only returns reviews for the specified business", () => {
+    const db = setupDb();
+    const bizA = addBusiness(db, "Meet Fresh", "https://www.yelp.com/biz/meet-fresh-temple-city");
+    const bizB = addBusiness(db, "Other Shop", "https://www.yelp.com/biz/other-shop");
+
+    syncReviews(db, bizA.id, [makeReview({ userId: "alice" })]);
+    syncReviews(db, bizB.id, [makeReview({ userId: "bob" })]);
+
+    const listed = listReviews(db, bizA.id);
+    expect(listed).toHaveLength(1);
+    expect(listed[0].userId).toBe("alice");
+  });
+
+  test("listReviews returns empty array when business has no reviews", () => {
+    const db = setupDb();
+    const biz = addBusiness(db, "Meet Fresh", "https://www.yelp.com/biz/meet-fresh-temple-city");
+
+    expect(listReviews(db, biz.id)).toEqual([]);
+  });
+
+  test("listReviews returns all reviews for a business with every field populated", () => {
+    const db = setupDb();
+    const biz = addBusiness(db, "Meet Fresh", "https://www.yelp.com/biz/meet-fresh-temple-city");
+    syncReviews(db, biz.id, [makeReview()]);
+
+    const listed = listReviews(db, biz.id);
+
+    expect(listed).toHaveLength(1);
+    expect(listed[0].id).toBeGreaterThan(0);
+    expect(listed[0].businessId).toBe(biz.id);
+    expect(listed[0].userId).toBe("abc123");
+    expect(listed[0].reviewerName).toBe("Alice B.");
+    expect(listed[0].reviewerLocation).toBe("Temple City, CA");
+    expect(listed[0].rating).toBe(5);
+    expect(listed[0].postedAtRaw).toBe("Apr 1, 2026");
+    expect(listed[0].postedAtIso).toBe("2026-04-01");
+    expect(listed[0].reviewText).toBe("Amazing shaved ice!");
+    expect(listed[0].fetchedAtIso).toBeDefined();
   });
 });
