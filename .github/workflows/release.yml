@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run tests
+        run: bun test
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Cross-compile all targets
+        run: bun run build:all
+
+      - name: Package release archives
+        run: |
+          set -euo pipefail
+          mkdir -p release
+
+          package_unix() {
+            local target="$1"
+            local bin="dist/kiwiberry-${target}"
+            local stage
+            stage="$(mktemp -d)"
+            cp "$bin" "$stage/kiwiberry"
+            cp README.md "$stage/README.md"
+            chmod +x "$stage/kiwiberry"
+            tar -C "$stage" -czf "release/kiwiberry-${target}.tar.gz" kiwiberry README.md
+            rm -rf "$stage"
+          }
+
+          package_windows() {
+            local target="$1"
+            local bin="dist/kiwiberry-${target}.exe"
+            local stage
+            stage="$(mktemp -d)"
+            cp "$bin" "$stage/kiwiberry.exe"
+            cp README.md "$stage/README.md"
+            (cd "$stage" && zip -q "${GITHUB_WORKSPACE}/release/kiwiberry-${target}.zip" kiwiberry.exe README.md)
+            rm -rf "$stage"
+          }
+
+          package_unix darwin-arm64
+          package_unix darwin-x64
+          package_unix linux-x64
+          package_unix linux-arm64
+          package_windows windows-x64
+
+          (cd release && sha256sum kiwiberry-* > SHA256SUMS)
+          cat release/SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/kiwiberry-darwin-arm64.tar.gz
+            release/kiwiberry-darwin-x64.tar.gz
+            release/kiwiberry-linux-x64.tar.gz
+            release/kiwiberry-linux-arm64.tar.gz
+            release/kiwiberry-windows-x64.zip
+            release/SHA256SUMS
+          generate_release_notes: true
+          fail_on_unmatched_files: true

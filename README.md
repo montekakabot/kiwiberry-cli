@@ -6,14 +6,55 @@ All output is JSON on stdout. Human-readable messages go to stderr.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) v1.0+
+- [OpenClaw](https://openclaw.dev/) browser CLI — required only for the `fetch` command
+- [Bun](https://bun.sh/) v1.0+ — only needed if you install from source
 
 ## Install
+
+### Install script (recommended)
+
+One-liner that auto-detects your OS/arch, downloads the matching binary from the latest GitHub Release, verifies its SHA256 checksum, and drops it into `~/.local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/montekakabot/kiwiberry-cli/main/install.sh | bash
+```
+
+Pin a specific release or change the install directory with env vars:
+
+```bash
+KIWIBERRY_VERSION=v0.2.0 KIWIBERRY_INSTALL_DIR=/usr/local/bin \
+  curl -fsSL https://raw.githubusercontent.com/montekakabot/kiwiberry-cli/main/install.sh | bash
+```
+
+Make sure `~/.local/bin` (or your chosen dir) is on `PATH`.
+
+### Manual download
+
+Grab a prebuilt archive from [Releases](https://github.com/montekakabot/kiwiberry-cli/releases) for your platform:
+
+| Platform       | Asset                                  |
+| -------------- | -------------------------------------- |
+| macOS arm64    | `kiwiberry-darwin-arm64.tar.gz`        |
+| macOS Intel    | `kiwiberry-darwin-x64.tar.gz`          |
+| Linux x86\_64  | `kiwiberry-linux-x64.tar.gz`           |
+| Linux arm64    | `kiwiberry-linux-arm64.tar.gz`         |
+| Windows x86\_64 | `kiwiberry-windows-x64.zip`           |
+
+Verify against `SHA256SUMS` published on the release, extract, and place `kiwiberry` somewhere on `PATH`.
+
+**macOS Gatekeeper:** the binary is unsigned, so macOS will block it with "unidentified developer" on first launch. Clear the quarantine flag once:
+
+```bash
+xattr -d com.apple.quarantine ~/.local/bin/kiwiberry
+```
+
+### From source
 
 ```bash
 git clone https://github.com/montekakabot/kiwiberry-cli.git
 cd kiwiberry-cli
 bun install
+bun run build          # → dist/kiwiberry (host target only)
 ```
 
 ## Usage
@@ -85,24 +126,6 @@ bun run dev business add "Shop B" "https://www.yelp.com/biz/shop"
 # stderr: A business with this Yelp URL is already registered
 ```
 
-## Build a standalone binary
-
-Compile Kiwiberry to a single executable that runs without Bun installed:
-
-```bash
-bun run build
-# → dist/kiwiberry
-```
-
-`bun build --compile` bundles the runtime, all dependencies, and every Drizzle migration SQL file into one self-contained binary. Copy `dist/kiwiberry` anywhere on `PATH` and run it directly:
-
-```bash
-./dist/kiwiberry business list
-./dist/kiwiberry config get max-pages
-```
-
-The binary auto-initializes `~/.kiwiberry/` and applies bundled migrations on first run, exactly like `bun run dev`. `fetch` still requires the [OpenClaw](https://openclaw.dev/) browser CLI on the host machine.
-
 ## Data storage
 
 Data is stored in `~/.kiwiberry/kiwiberry.db` (SQLite). The database and directory are created automatically on first use. To start fresh, delete that file.
@@ -115,8 +138,18 @@ bun test                 # Run all tests
 bun test test/db.test.ts # Run a single test file
 bun run lint             # ESLint with strict type-checking
 bun run lint -- --fix    # Auto-fix lint issues
-bun run build            # Compile a standalone binary → dist/kiwiberry
+bun run build            # Compile a standalone binary → dist/kiwiberry (host target)
+bun run build:all        # Cross-compile darwin/linux/windows targets into dist/
 bunx drizzle-kit generate # Generate migration after schema changes
+```
+
+### Cutting a release
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs tests + lint, cross-compiles all 5 targets, packages each binary with the README into a `tar.gz` (or `zip` on Windows), writes a `SHA256SUMS` file, and uploads everything to a GitHub Release.
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 ## Project structure
