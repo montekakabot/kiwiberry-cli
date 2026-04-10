@@ -130,6 +130,23 @@ bun run dev business add "Shop B" "https://www.yelp.com/biz/shop"
 
 Data is stored in `~/.kiwiberry/kiwiberry.db` (SQLite). The database and directory are created automatically on first use. To start fresh, delete that file.
 
+## Uninstall
+
+Kiwiberry does not install anything outside the binary and its data directory, so removing it is two `rm` commands:
+
+```bash
+# 1. Remove the binary (adjust the path if you installed it elsewhere)
+rm ~/.local/bin/kiwiberry
+
+# 2. Remove the database and any config (WARNING: this deletes every
+#    tracked business, review, and draft response)
+rm -rf ~/.kiwiberry
+```
+
+If you installed from source, also delete the cloned repo directory. If you set a custom `KIWIBERRY_INSTALL_DIR` during install, remove `kiwiberry` from that directory instead of `~/.local/bin`.
+
+Keep `~/.kiwiberry` if you plan to reinstall — the new binary will pick up the existing database on first run.
+
 ## Development
 
 ```bash
