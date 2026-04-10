@@ -9,6 +9,8 @@ src/
     business.ts       — business add/list/remove subcommands
     config.ts         — config get/set subcommands
     fetch.ts          — fetch reviews for a business
+    respond.ts        — save a draft response for a review
+    responses.ts      — list draft responses for a review
     reviews.ts        — list stored reviews for a business
   db/
     schema.ts         — Drizzle ORM schema (4 tables)
@@ -16,12 +18,14 @@ src/
   services/
     business.ts       — business CRUD with Zod validation
     config.ts         — config key-value get/set with defaults
+    response.ts       — draft response add/list with Zod validation
     review.ts         — review sync/dedup logic with Zod validation
     scraper.ts        — Yelp scraper via openclaw browser CLI
 test/
   db.test.ts          — database layer tests
   business.test.ts    — business service tests
   config.test.ts      — config service tests
+  response.test.ts    — response service tests
   review.test.ts      — review service tests
   scraper.test.ts     — scraper parsing / helper tests
 drizzle/
@@ -92,6 +96,18 @@ listReviews(db, businessId)                    // → all stored reviews for the
 - `listReviews` returns every stored review row for the business, scoped by `businessId`. Returns `[]` if the business has no reviews.
 - Both functions throw `Business not found: N` if `businessId` does not exist.
 
+### Response Service (`src/services/response.ts`)
+
+```typescript
+addDraftResponse(db, reviewId, responseText)  // → created draft row
+listDraftResponses(db, reviewId)              // → all drafts for the review
+```
+
+- `addDraftResponse` validates that `responseText` is a non-empty string via Zod. Multiple drafts per review are allowed.
+- Both functions throw `Review not found: N` if `reviewId` does not exist.
+- `listDraftResponses` returns `[]` if the review has no drafts.
+- Drafts cascade-delete when their parent review is deleted (schema-level FK).
+
 ### Scraper (`src/services/scraper.ts`)
 
 ```typescript
@@ -148,9 +164,9 @@ Uses citty (unjs/citty). The root command is defined in `src/index.ts`. Commands
 | `config set <key> <value>` | `{"key":"...","value":"..."}` | — |
 | `fetch -b <id> [--pages N]` | JSON array of new reviews | "Business not found" / "openclaw CLI is not installed" |
 | `reviews -b <id>` | JSON array of all stored reviews | "Business not found" / "Business ID must be a number" |
+| `respond <review-id> [text]` | Created draft response JSON | "Review not found" / "Review ID must be a number" / "Response text must not be empty" |
+| `responses <review-id>` | JSON array of draft responses | "Review not found" / "Review ID must be a number" |
 
 All CLI output goes as JSON on stdout. Human-readable error messages go on stderr.
 
-## Planned Modules (Not Yet Built)
-
-- **Response Service** — save/list draft responses
+The `respond` command reads response text from the positional argument when supplied; otherwise it reads the entire contents of stdin (trimmed) and uses that.
