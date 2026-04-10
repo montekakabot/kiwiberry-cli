@@ -59,71 +59,117 @@ bun run build          # → dist/kiwiberry (host target only)
 
 ## Usage
 
+Once installed, the binary is available as `kiwiberry`. All commands print JSON on stdout; human-readable status and errors go to stderr, so you can pipe output into `jq` or redirect it safely.
+
 ```bash
-bun run dev <command>
+kiwiberry --help                  # Top-level help
+kiwiberry <command> --help        # Help for a specific command
+```
+
+Subcommands: `business`, `config`, `fetch`, `reviews`, `respond`, `responses`.
+
+### Typical workflow
+
+Register a business, pull its latest reviews, then draft a reply to one:
+
+```bash
+# 1. Register the business (use the canonical Yelp biz URL)
+kiwiberry business add "Meet Fresh" "https://www.yelp.com/biz/meet-fresh-temple-city"
+# → {"id":1,"name":"Meet Fresh","yelpUrl":"https://www.yelp.com/biz/meet-fresh-temple-city","createdAt":"2026-04-10 09:12:00"}
+
+# 2. Fetch the first 2 pages of reviews (new reviews only)
+kiwiberry fetch -b 1 --pages 2
+# → [{"id":12,"businessId":1,"author":"Jane D.","rating":5,"text":"Best taro milk tea...","postedAt":"2026-04-09"}]
+
+# 3. List everything we've stored for that business
+kiwiberry reviews -b 1 | jq '.[] | {id, rating, author}'
+
+# 4. Draft a response to a specific review
+kiwiberry respond 12 "Thanks Jane — we're glad you loved the taro!"
+# → {"id":1,"reviewId":12,"text":"Thanks Jane — we're glad you loved the taro!","createdAt":"2026-04-10 09:15:00"}
+
+# 5. Review drafts you've written for that review
+kiwiberry responses 12
 ```
 
 ### Manage businesses
 
 ```bash
 # Register a business
-bun run dev business add "Meet Fresh" "https://www.yelp.com/biz/meet-fresh-temple-city"
-# → {"id":1,"name":"Taco Palace","yelpUrl":"https://www.yelp.com/biz/taco-palace","createdAt":"2026-04-08 12:00:00"}
+kiwiberry business add "Meet Fresh" "https://www.yelp.com/biz/meet-fresh-temple-city"
 
-# List all businesses
-bun run dev business list
-# → [{"id":1,"name":"Taco Palace","yelpUrl":"https://www.yelp.com/biz/taco-palace","createdAt":"2026-04-08 12:00:00"}]
+# List all tracked businesses
+kiwiberry business list
+# → [{"id":1,"name":"Meet Fresh","yelpUrl":"https://www.yelp.com/biz/meet-fresh-temple-city","createdAt":"2026-04-10 09:12:00"}]
 
-# Remove a business (cascades to reviews and draft responses)
-bun run dev business remove 1
+# Remove a business (cascades to its reviews and draft responses)
+kiwiberry business remove 1
 # → {"removed":true,"id":1}
 ```
 
-### Manage configuration
-
-```bash
-# Get a config value (max-pages defaults to 2)
-bun run dev config get max-pages
-# → {"key":"max-pages","value":"2"}
-
-# Set a config value
-bun run dev config set max-pages 5
-# → {"key":"max-pages","value":"5"}
-
-# Get the updated value
-bun run dev config get max-pages
-# → {"key":"max-pages","value":"5"}
-
-# Unknown keys return an error
-bun run dev config get foo
-# stderr: Unknown config key: foo
-```
-
-### Download reviews
-
-```bash
-bun run dev fetch -b 1 --pages 1
-```
-
-### Input validation
+Validation rules:
 
 - Business name must be non-empty
 - Yelp URL must be a valid URL
 - Duplicate Yelp URLs are rejected
 
 ```bash
-# Empty name
-bun run dev business add "" "https://www.yelp.com/biz/test"
-# stderr: Validation error
+kiwiberry business add "" "https://www.yelp.com/biz/test"         # stderr: Validation error
+kiwiberry business add "Test" "not-a-url"                         # stderr: Validation error
+kiwiberry business add "Shop B" "https://www.yelp.com/biz/shop"   # stderr: A business with this Yelp URL is already registered
+```
 
-# Invalid URL
-bun run dev business add "Test" "not-a-url"
-# stderr: Validation error
+### Fetch reviews
 
-# Duplicate URL
-bun run dev business add "Shop A" "https://www.yelp.com/biz/shop"
-bun run dev business add "Shop B" "https://www.yelp.com/biz/shop"
-# stderr: A business with this Yelp URL is already registered
+Requires the [OpenClaw](https://openclaw.dev/) browser CLI on `PATH`. Scrapes the business page, inserts any reviews not already in the database, and prints the newly added rows.
+
+```bash
+# Use the default page count from config (max-pages, defaults to 2)
+kiwiberry fetch -b 1
+
+# Override just for this run
+kiwiberry fetch -b 1 --pages 5
+```
+
+### List stored reviews
+
+```bash
+kiwiberry reviews -b 1
+# → [{"id":12,"businessId":1,"author":"Jane D.","rating":5,"text":"...","postedAt":"2026-04-09"}, ...]
+```
+
+### Draft responses
+
+Pass the text inline, or pipe it in from stdin (handy for multi-line replies or generated drafts):
+
+```bash
+# Inline
+kiwiberry respond 12 "Thanks for the kind words!"
+
+# From stdin
+cat reply.txt | kiwiberry respond 12
+
+# List every draft saved for a review
+kiwiberry responses 12
+# → [{"id":1,"reviewId":12,"text":"Thanks for the kind words!","createdAt":"2026-04-10 09:15:00"}]
+```
+
+### Configuration
+
+Config lives in the same SQLite database. `max-pages` controls how many Yelp review pages `fetch` scrapes when `--pages` is not passed.
+
+```bash
+# Read a value (defaults apply if it's never been set)
+kiwiberry config get max-pages
+# → {"key":"max-pages","value":"2"}
+
+# Change it
+kiwiberry config set max-pages 5
+# → {"key":"max-pages","value":"5"}
+
+# Unknown keys error out
+kiwiberry config get foo
+# stderr: Unknown config key: foo
 ```
 
 ## Data storage
