@@ -6,7 +6,10 @@ import type * as schema from "../db/schema";
 
 type Db = BunSQLiteDatabase<typeof schema>;
 
-const responseTextSchema = z.string().min(1, "Response text must not be empty");
+const responseTextSchema = z
+  .string()
+  .transform(s => s.trim())
+  .refine(s => s.length > 0, { message: "Response text must not be empty" });
 
 export function addDraftResponse(db: Db, reviewId: number, responseText: string) {
   const review = db.select().from(reviews).where(eq(reviews.id, reviewId)).get();

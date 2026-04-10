@@ -24,11 +24,7 @@ export default defineCommand({
     }
 
     const inline = args.text as string | undefined;
-    const text = inline ?? (await Bun.stdin.text()).trim();
-    if (text.length === 0) {
-      console.error("Response text must not be empty");
-      process.exit(1);
-    }
+    const text = inline ?? await Bun.stdin.text();
 
     try {
       const draft = addDraftResponse(db, id, text);

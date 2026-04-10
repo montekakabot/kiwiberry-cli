@@ -65,6 +65,12 @@ describe("ResponseService", () => {
     expect(() => addDraftResponse(db, review.id, "")).toThrow();
   });
 
+  test("addDraftResponse rejects whitespace-only response text", () => {
+    const db = setupDb();
+    const review = seedReview(db);
+    expect(() => addDraftResponse(db, review.id, "   \n\t  ")).toThrow();
+  });
+
   test("addDraftResponse supports multiple drafts per review", () => {
     const db = setupDb();
     const review = seedReview(db);
