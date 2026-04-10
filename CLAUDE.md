@@ -21,6 +21,8 @@ bunx drizzle-kit generate # Generate migration after schema changes
 
 [Testing](docs/testing.md)
 
+[Releasing](docs/releasing.md)
+
 ## Key Conventions
 
 - Runtime: Bun.js. Use `bun:sqlite` driver with `drizzle-orm`.
