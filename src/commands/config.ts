@@ -1,11 +1,9 @@
 import { defineCommand } from "citty";
-import { homedir } from "os";
-import { join } from "path";
-import { getDatabase } from "../db";
+import { defaultDataDir, getDatabase } from "../db";
 import { getConfig, setConfig } from "../services/config";
 
 function getDb() {
-  return getDatabase(join(homedir(), ".kiwiberry"));
+  return getDatabase(defaultDataDir());
 }
 
 const get = defineCommand({

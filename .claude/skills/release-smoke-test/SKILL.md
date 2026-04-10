@@ -115,10 +115,11 @@ KIWIBERRY_INSTALL_DIR="$SMOKE_DIR" \
 
 ```bash
 SMOKE_DIR_CURL="/tmp/kiwiberry-rc-smoke-curl-$$"
-KIWIBERRY_VERSION=v0.0.0-rcN \
-KIWIBERRY_INSTALL_DIR="$SMOKE_DIR_CURL" \
-  curl -fsSL https://raw.githubusercontent.com/montekakabot/kiwiberry-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/montekakabot/kiwiberry-cli/main/install.sh | \
+  KIWIBERRY_VERSION=v0.0.0-rcN KIWIBERRY_INSTALL_DIR="$SMOKE_DIR_CURL" bash
 ```
+
+Note the env vars go **after** the pipe, scoped to `bash`, not to `curl`. Setting them before `curl` scopes them to the curl process and they never reach the install script — the script then defaults to `latest` and `~/.local/bin`, silently polluting the user's real install directory.
 
 Both should print `Downloading ...`, `Fetching .../SHA256SUMS`, `Checksum verified.`, and `Installed kiwiberry → ...`.
 
@@ -135,15 +136,15 @@ xattr -d com.apple.quarantine "$SMOKE_DIR/kiwiberry" 2>/dev/null || true
 "$SMOKE_DIR/kiwiberry" --help
 ```
 
-`--version` must print a version string (currently tracks `package.json`). Then do a minimum end-to-end check that doesn't touch the real `~/.kiwiberry` database:
+`--version` must print a version string (currently tracks `package.json`). Then do a minimum end-to-end check against an isolated DB directory — **never** run against `~/.kiwiberry`:
 
 ```bash
 KIWIBERRY_DB_DIR="$SMOKE_DIR/data" "$SMOKE_DIR/kiwiberry" business list
 ```
 
-(If `KIWIBERRY_DB_DIR` is not supported, fall back to temporarily renaming `~/.kiwiberry` or running `business list` and trusting the user can tolerate the real DB being touched — **ask the user first** before touching their real database.)
+`KIWIBERRY_DB_DIR` is wired through `defaultDataDir()` in `src/db/index.ts` and every command respects it. If a future refactor breaks that wiring, verify the isolated dir actually got created (`ls "$SMOKE_DIR/data"`) before trusting the output; an empty stdout with a missing dir means the binary fell back to `~/.kiwiberry` and you've just touched the user's real database. Stop and ask the user if that happens.
 
-A fresh DB + `business list` should return `[]` on stdout with no errors on stderr. That proves:
+A fresh DB + `business list` should return `[]` on stdout with no errors on stderr, and `$SMOKE_DIR/data/kiwiberry.db` should exist afterward. That proves:
 - The binary starts
 - Bundled migrations apply against a brand-new SQLite file
 - JSON-on-stdout contract holds
