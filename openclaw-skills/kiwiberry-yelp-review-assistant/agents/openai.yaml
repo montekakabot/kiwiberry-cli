@@ -1,0 +1,7 @@
+interface:
+  display_name: "Kiwiberry Yelp Review Assistant"
+  short_description: "Monitor Yelp reviews and save draft replies"
+  default_prompt: "Use $kiwiberry-yelp-review-assistant to check a tracked business for new Yelp reviews and save a draft response for anything that needs a reply."
+
+policy:
+  allow_implicit_invocation: true
