@@ -60,24 +60,24 @@ export function findNextPageRef(snapshot: string): string | null {
 //               `- text:` children are the review paragraphs (reviewers with
 //               photos or Elite status render this way).
 function extractReviewText(block: string): string | null {
-  const paragraphStart = /- paragraph \[ref=\w+\]:(.*)$/m.exec(block);
+  const paragraphStart = /^(\s*)- paragraph \[ref=\w+\]:(.*)$/m.exec(block);
   if (paragraphStart?.index === undefined) return null;
 
-  const inline = paragraphStart[1].trim();
+  const inline = paragraphStart[2].trim();
   if (inline.length > 0) return inline;
 
-  // Collect contiguous `- text:` children within the paragraph's subtree.
+  // Nested form: `- text:` descendants live strictly below the paragraph's
+  // indent. As soon as we see a non-blank line at or above that indent we've
+  // left the paragraph subtree (e.g. a sibling `- generic` wrapping reactions).
+  const paragraphIndent = paragraphStart[1].length;
   const afterParagraph = block.substring(paragraphStart.index + paragraphStart[0].length);
   const textLines: string[] = [];
   for (const line of afterParagraph.split("\n")) {
+    if (line.trim().length === 0) continue;
+    const indent = line.length - line.trimStart().length;
+    if (indent <= paragraphIndent) break;
     const textMatch = /^\s+- text: (.+)$/.exec(line);
-    if (textMatch) {
-      textLines.push(textMatch[1].trim());
-      continue;
-    }
-    if (textLines.length > 0 && /^\s*- \w/.test(line) && !/^\s+- generic/.test(line)) {
-      break;
-    }
+    if (textMatch) textLines.push(textMatch[1].trim());
   }
   return textLines.length > 0 ? textLines.join("\n\n") : null;
 }

@@ -239,6 +239,35 @@ describe("parseReviewsFromSnapshot", () => {
     expect(reviews[0].reviewText).toContain("I do not recommend Meet Fresh.");
   });
 
+  test("stops scanning at paragraph boundary, ignoring sibling generic subtrees", () => {
+    // After the review paragraph, Yelp renders a sibling `- generic` for
+    // reactions whose buttons contain `- text:` labels like "Useful 3".
+    // The parser must not append those to the review text.
+    const snapshot = `
+- list [ref=e1]:
+  - listitem [ref=e2]:
+    - region "Dana P." [ref=e3]:
+      - link [ref=e4]:
+        - /url: /user_details?userid=abc123
+      - generic [ref=e5]: San Diego, CA
+    - generic [ref=e6]:
+      - img "5 star rating" [ref=e7]
+      - generic [ref=e8]: Apr 2, 2026
+      - paragraph [ref=e9]:
+        - generic [ref=e10]:
+          - text: Actual review sentence.
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - text: Useful 3
+  - listitem [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewerName).toBe("Dana P.");
+    expect(reviews[0].reviewText).toBe("Actual review sentence.");
+  });
+
   test("joins nested text children from multi-paragraph review body", () => {
     // Reviewers with photos render multi-paragraph bodies as sibling `- text:`
     // children; the parser must join them rather than dropping the review
