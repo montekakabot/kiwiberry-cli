@@ -199,4 +199,103 @@ describe("parseReviewsFromSnapshot", () => {
     expect(reviews[0].reviewText).toBe("Amazing shaved ice!");
     expect(reviews[0].fetchedAtIso).toBeDefined();
   });
+
+  test("ignores business-owner response widget when extracting review text", () => {
+    // Real Yelp snapshots inject a "Business owner information" region
+    // alongside the reviewer's content. The review text itself is nested as
+    // `- text:` children under a refless `- generic` inside the paragraph.
+    // Previously the parser captured the owner-widget paragraph label
+    // ("Business owner information") instead of the reviewer's actual text.
+    const snapshot = `
+- list [ref=e1]:
+  - listitem [ref=e1368]:
+    - generic [ref=e1369]:
+      - generic [ref=e1371]:
+        - region "lisa j." [ref=e1373]:
+          - link [ref=e1377]:
+            - /url: /user_details?userid=x-oG4OvNbXOmhT5U7BDzfw
+          - generic [ref=e1386]: San Diego, CA
+      - generic [ref=e1402]:
+        - generic [ref=e1404]:
+          - img "1 star rating" [ref=e1408]
+          - generic [ref=e1434]: Apr 5, 2026
+        - paragraph [ref=e1445]:
+          - generic [ref=e1446]:
+            - text: Maybe I ordered the wrong drink.
+            - text: I do not recommend Meet Fresh.
+      - generic [ref=e1497]:
+        - region "Business owner information" [ref=e1500]:
+          - paragraph [ref=e1501]: Business owner information
+          - paragraph [ref=e1508]: Store M.
+          - paragraph [ref=e1510]: Business Manager
+  - listitem [ref=e1524]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewerName).toBe("lisa j.");
+    expect(reviews[0].reviewText).not.toContain("Business owner information");
+    expect(reviews[0].reviewText).toContain("Maybe I ordered the wrong drink.");
+    expect(reviews[0].reviewText).toContain("I do not recommend Meet Fresh.");
+  });
+
+  test("stops scanning at paragraph boundary, ignoring sibling generic subtrees", () => {
+    // After the review paragraph, Yelp renders a sibling `- generic` for
+    // reactions whose buttons contain `- text:` labels like "Useful 3".
+    // The parser must not append those to the review text.
+    const snapshot = `
+- list [ref=e1]:
+  - listitem [ref=e2]:
+    - region "Dana P." [ref=e3]:
+      - link [ref=e4]:
+        - /url: /user_details?userid=abc123
+      - generic [ref=e5]: San Diego, CA
+    - generic [ref=e6]:
+      - img "5 star rating" [ref=e7]
+      - generic [ref=e8]: Apr 2, 2026
+      - paragraph [ref=e9]:
+        - generic [ref=e10]:
+          - text: Actual review sentence.
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - text: Useful 3
+  - listitem [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewerName).toBe("Dana P.");
+    expect(reviews[0].reviewText).toBe("Actual review sentence.");
+  });
+
+  test("joins nested text children from multi-paragraph review body", () => {
+    // Reviewers with photos render multi-paragraph bodies as sibling `- text:`
+    // children; the parser must join them rather than dropping the review
+    // because no inline paragraph text exists.
+    const snapshot = `
+- list [ref=e1]:
+  - listitem [ref=e2]:
+    - region "Alan X." [ref=e3]:
+      - link [ref=e4]:
+        - /url: /user_details?userid=w-AxQ3Ghlsy6_4QN45lH0w
+      - generic [ref=e5]: San Diego, CA
+      - img "3 star rating" [ref=e6]
+      - generic [ref=e7]: Mar 26, 2026
+      - paragraph [ref=e8]:
+        - generic [ref=e9]:
+          - text: I got the chocolate egg waffle. Not bad.
+          - text: The service kinda sucked.
+          - text: Ambiance is good but the table was sticky.
+  - listitem [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewerName).toBe("Alan X.");
+    expect(reviews[0].reviewText).toBe(
+      "I got the chocolate egg waffle. Not bad.\n\n"
+      + "The service kinda sucked.\n\n"
+      + "Ambiance is good but the table was sticky."
+    );
+  });
 });
