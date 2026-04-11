@@ -54,6 +54,34 @@ export function findNextPageRef(snapshot: string): string | null {
   return match?.[1] ?? null;
 }
 
+// Review text appears in two shapes in Yelp's accessibility snapshot:
+//   1. Inline:  `- paragraph [ref=e1]: the whole review on one line`
+//   2. Nested:  `- paragraph [ref=e1]:` with a `- generic` child whose
+//               `- text:` children are the review paragraphs (reviewers with
+//               photos or Elite status render this way).
+function extractReviewText(block: string): string | null {
+  const paragraphStart = /- paragraph \[ref=\w+\]:(.*)$/m.exec(block);
+  if (paragraphStart?.index === undefined) return null;
+
+  const inline = paragraphStart[1].trim();
+  if (inline.length > 0) return inline;
+
+  // Collect contiguous `- text:` children within the paragraph's subtree.
+  const afterParagraph = block.substring(paragraphStart.index + paragraphStart[0].length);
+  const textLines: string[] = [];
+  for (const line of afterParagraph.split("\n")) {
+    const textMatch = /^\s+- text: (.+)$/.exec(line);
+    if (textMatch) {
+      textLines.push(textMatch[1].trim());
+      continue;
+    }
+    if (textLines.length > 0 && /^\s*- \w/.test(line) && !/^\s+- generic/.test(line)) {
+      break;
+    }
+  }
+  return textLines.length > 0 ? textLines.join("\n\n") : null;
+}
+
 export function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
   const reviews: ScrapedReview[] = [];
   const now = new Date().toISOString();
@@ -70,9 +98,17 @@ export function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
     const startIdx = match.index;
     // Bound the block by the next listitem
     const nextListitem = snapshot.indexOf("- listitem", startIdx + 10);
-    const block = nextListitem > 0
+    let block = nextListitem > 0
       ? snapshot.substring(startIdx, nextListitem)
       : snapshot.substring(startIdx);
+
+    // Yelp injects a sibling "Business owner information" region containing
+    // the owner's response. Trim the block there so its paragraphs can't be
+    // mistaken for the reviewer's own text.
+    const ownerWidgetIdx = block.indexOf("- region \"Business owner information\"");
+    if (ownerWidgetIdx >= 0) {
+      block = block.substring(0, ownerWidgetIdx);
+    }
 
     // Extract userId from /url: /user_details?userid=...
     const userIdMatch = /\/user_details\?userid=([\w-]+)/.exec(block);
@@ -95,9 +131,7 @@ export function parseReviewsFromSnapshot(snapshot: string): ScrapedReview[] {
 
     const postedAtIso = new Date(postedAtRaw).toISOString().split("T")[0];
 
-    // Extract review text
-    const textMatch = /- paragraph \[ref=\w+\]: (.+)/.exec(block);
-    const reviewText = textMatch?.[1]?.trim();
+    const reviewText = extractReviewText(block);
     if (!reviewText) continue;
 
     reviews.push({
