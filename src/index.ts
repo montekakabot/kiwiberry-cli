@@ -9,7 +9,7 @@ import reviews from "./commands/reviews";
 const main = defineCommand({
   meta: {
     name: "kiwiberry",
-    version: "0.1.0",
+    version: "0.1.1",
     description: "Yelp review tracker CLI — scrape reviews, draft responses, stay on top of feedback."
   },
   subCommands: { business, config, fetch, respond, responses, reviews }
