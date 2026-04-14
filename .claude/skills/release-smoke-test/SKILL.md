@@ -33,13 +33,14 @@ If any precondition fails, stop and report to the user. Do not try to "fix" a di
 
 ## Pick an rc tag name
 
-Default to `v0.0.0-rc1`. If that tag already exists (locally or remote), increment the suffix:
+Read the current version from `package.json` and use it as the rc base. For example, if the version is `0.1.2`, the rc tag is `v0.1.2-rc1`. If that tag already exists (locally or remote), increment the suffix:
 
 ```bash
-git ls-remote --tags origin 'v0.0.0-rc*'
+VERSION=$(jq -r .version package.json)
+git ls-remote --tags origin "v${VERSION}-rc*"
 ```
 
-Pick the next free `v0.0.0-rcN`. `v0.0.0-*` is deliberately outside the real semver range so nobody mistakes it for a shippable version in the tag list.
+Pick the next free `v${VERSION}-rcN`. This keeps rc tags clearly associated with the version being tested.
 
 ## Steps
 
@@ -48,8 +49,8 @@ Track each step with TaskCreate so the user can see progress. Mark complete as y
 ### 1. Tag and push
 
 ```bash
-git tag -a v0.0.0-rcN -m "Release workflow smoke test"
-git push origin v0.0.0-rcN
+git tag -a v${VERSION}-rcN -m "Release workflow smoke test"
+git push origin v${VERSION}-rcN
 ```
 
 Pushing a `v*` tag fires `.github/workflows/release.yml`.
@@ -66,7 +67,7 @@ gh run watch
 2. Diagnose the root cause — don't just retry
 3. Fix on `main` via a normal PR (do not amend the tag)
 4. Delete the failed tag and release (see cleanup)
-5. Re-tag as `v0.0.0-rc(N+1)` and repeat
+5. Re-tag as `v${VERSION}-rc(N+1)` and repeat
 
 Common failure classes to watch for:
 - Test or lint failure (should be caught by local `bun test` precondition, but the runner environment differs)
@@ -78,7 +79,7 @@ Common failure classes to watch for:
 ### 3. Verify release assets landed
 
 ```bash
-gh release view v0.0.0-rcN
+gh release view v${VERSION}-rcN
 ```
 
 Confirm all 6 assets are present:
@@ -92,7 +93,7 @@ Confirm all 6 assets are present:
 Spot-check `SHA256SUMS` format:
 
 ```bash
-gh release download v0.0.0-rcN --pattern SHA256SUMS --output /tmp/SHA256SUMS-rcN
+gh release download v${VERSION}-rcN --pattern SHA256SUMS --output /tmp/SHA256SUMS-rcN
 cat /tmp/SHA256SUMS-rcN
 ```
 
@@ -106,7 +107,7 @@ Use a unique temp dir so the smoke test never collides with a real install in `~
 
 ```bash
 SMOKE_DIR="/tmp/kiwiberry-rc-smoke-$$"
-KIWIBERRY_VERSION=v0.0.0-rcN \
+KIWIBERRY_VERSION=v${VERSION}-rcN \
 KIWIBERRY_INSTALL_DIR="$SMOKE_DIR" \
   bash install.sh
 ```
@@ -116,7 +117,7 @@ KIWIBERRY_INSTALL_DIR="$SMOKE_DIR" \
 ```bash
 SMOKE_DIR_CURL="/tmp/kiwiberry-rc-smoke-curl-$$"
 curl -fsSL https://raw.githubusercontent.com/montekakabot/kiwiberry-cli/main/install.sh | \
-  KIWIBERRY_VERSION=v0.0.0-rcN KIWIBERRY_INSTALL_DIR="$SMOKE_DIR_CURL" bash
+  KIWIBERRY_VERSION=v${VERSION}-rcN KIWIBERRY_INSTALL_DIR="$SMOKE_DIR_CURL" bash
 ```
 
 Note the env vars go **after** the pipe, scoped to `bash`, not to `curl`. Setting them before `curl` scopes them to the curl process and they never reach the install script — the script then defaults to `latest` and `~/.local/bin`, silently polluting the user's real install directory.
@@ -154,8 +155,8 @@ A fresh DB + `business list` should return `[]` on stdout with no errors on stde
 **Only after the user confirms the smoke test looks good.** Do not cleanup on your own judgment — the rc artifacts may be useful for debugging if anything looked off.
 
 ```bash
-gh release delete v0.0.0-rcN --yes --cleanup-tag
-git tag -d v0.0.0-rcN 2>/dev/null || true
+gh release delete v${VERSION}-rcN --yes --cleanup-tag
+git tag -d v${VERSION}-rcN 2>/dev/null || true
 git fetch --prune --prune-tags origin
 
 rm -rf "$SMOKE_DIR" "$SMOKE_DIR_CURL"
@@ -182,6 +183,6 @@ Summarize:
 
 ## Non-goals
 
-- **Cutting a real release.** That's `docs/releasing.md`. The smoke test is `v0.0.0-rcN` only.
+- **Cutting a real release.** That's `docs/releasing.md`. The smoke test is `v${VERSION}-rcN` only.
 - **Testing linux/windows binaries on macOS.** Only the host-platform binary is actually executed. Cross-platform runtime validation requires real hardware or CI matrix jobs — out of scope here.
 - **Retrying transient infra failures blindly.** Diagnose before re-tagging.
