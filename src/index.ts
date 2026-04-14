@@ -5,11 +5,12 @@ import fetch from "./commands/fetch";
 import respond from "./commands/respond";
 import responses from "./commands/responses";
 import reviews from "./commands/reviews";
+import pkg from "../package.json";
 
 const main = defineCommand({
   meta: {
     name: "kiwiberry",
-    version: "0.1.1",
+    version: pkg.version,
     description: "Yelp review tracker CLI — scrape reviews, draft responses, stay on top of feedback."
   },
   subCommands: { business, config, fetch, respond, responses, reviews }
