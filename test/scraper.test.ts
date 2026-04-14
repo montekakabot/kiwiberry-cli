@@ -14,6 +14,23 @@ const VALID_SNAPSHOT = `
   - listitem [ref=e9]:
 `;
 
+// OpenClaw 2026.4.11 format: region contains only reviewer info (name, photo,
+// location). Rating, date, and review text are siblings at the same indent
+// level. No `/url:` lines — userId is derived from slugified reviewer name.
+const NEW_FORMAT_SNAPSHOT = `
+      - region "Alice B." [ref=e3]:
+        - link "Photo of Alice B." [ref=e4]
+          - image "Photo of Alice B."
+        - link "Alice B." [ref=e5]
+          - statictext "Alice B."
+        - statictext "Temple City, CA"
+      - image "5 star rating"
+      - statictext "Apr 1, 2026"
+      - statictext "Amazing shaved ice!"
+      - button "Helpful (0 reactions)" [ref=e10]
+      - region "Recommended Reviews" [ref=e20]:
+`;
+
 describe("extractTabIds", () => {
   test("extracts all tab targetIds from openclaw tabs JSON output", () => {
     const output = `{
@@ -133,9 +150,8 @@ describe("parseReviewsFromSnapshot", () => {
     expect(reviews).toHaveLength(0);
   });
 
-  test("skips review blocks missing required fields", () => {
-    // Missing userId
-    const noUserId = `
+  test("falls back to slugified name when userId URL is absent", () => {
+    const snapshot = `
 - list [ref=e1]:
   - listitem [ref=e2]:
     - region "Bob C." [ref=e3]:
@@ -144,8 +160,12 @@ describe("parseReviewsFromSnapshot", () => {
       - paragraph [ref=e6]: Great place
   - listitem [ref=e7]:
 `;
-    expect(parseReviewsFromSnapshot(noUserId)).toHaveLength(0);
+    const reviews = parseReviewsFromSnapshot(snapshot);
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].userId).toBe("bob-c");
+  });
 
+  test("skips review blocks missing required fields", () => {
     // Missing rating
     const noRating = `
 - list [ref=e1]:
@@ -297,5 +317,238 @@ describe("parseReviewsFromSnapshot", () => {
       + "The service kinda sucked.\n\n"
       + "Ambiance is good but the table was sticky."
     );
+  });
+
+  test("parses a valid review from new openclaw format", () => {
+    const reviews = parseReviewsFromSnapshot(NEW_FORMAT_SNAPSHOT);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].userId).toBe("alice-b");
+    expect(reviews[0].reviewerName).toBe("Alice B.");
+    expect(reviews[0].reviewerLocation).toBe("Temple City, CA");
+    expect(reviews[0].rating).toBe(5);
+    expect(reviews[0].postedAtRaw).toBe("Apr 1, 2026");
+    expect(reviews[0].postedAtIso).toBe("2026-04-01");
+    expect(reviews[0].reviewText).toBe("Amazing shaved ice!");
+    expect(reviews[0].fetchedAtIso).toBeDefined();
+  });
+
+  test("skips new-format review blocks missing required fields", () => {
+    // Missing rating
+    const noRating = `
+      - region "Bob C." [ref=e10]:
+        - link "Bob C." [ref=e11]
+          - statictext "Bob C."
+        - statictext "San Diego, CA"
+      - statictext "Mar 15, 2026"
+      - statictext "Great place"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    expect(parseReviewsFromSnapshot(noRating)).toHaveLength(0);
+
+    // Missing date
+    const noDate = `
+      - region "Bob C." [ref=e10]:
+        - link "Bob C." [ref=e11]
+          - statictext "Bob C."
+        - statictext "San Diego, CA"
+      - image "4 star rating"
+      - statictext "Great place"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    expect(parseReviewsFromSnapshot(noDate)).toHaveLength(0);
+
+    // Missing review text (only location and date statictext)
+    const noText = `
+      - region "Bob C." [ref=e10]:
+        - link "Bob C." [ref=e11]
+          - statictext "Bob C."
+        - statictext "San Diego, CA"
+      - image "4 star rating"
+      - statictext "Mar 15, 2026"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    expect(parseReviewsFromSnapshot(noText)).toHaveLength(0);
+  });
+
+  test("ignores business-owner widget in new format", () => {
+    const snapshot = `
+      - region "lisa j." [ref=e10]:
+        - link "lisa j." [ref=e11]
+          - statictext "lisa j."
+        - statictext "San Diego, CA"
+      - image "1 star rating"
+      - statictext "Apr 5, 2026"
+      - statictext "Maybe I ordered the wrong drink."
+      - linebreak
+      - linebreak
+      - statictext "I do not recommend Meet Fresh."
+      - button "Helpful (0 reactions)" [ref=e16]
+      - region "Business owner information" [ref=e18]:
+        - statictext "Business owner information"
+        - image "Photo of Store M."
+        - statictext "Store M."
+      - generic
+        - statictext "Apr 5, 2026"
+        - statictext "Thank you for visiting!"
+      - region "Alan X." [ref=e30]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewText).not.toContain("Business owner information");
+    expect(reviews[0].reviewText).not.toContain("Thank you for visiting!");
+    expect(reviews[0].reviewText).toContain("Maybe I ordered the wrong drink.");
+    expect(reviews[0].reviewText).toContain("I do not recommend Meet Fresh.");
+  });
+
+  test("parses multiple reviews from new-format snapshot", () => {
+    const snapshot = `
+      - region "Alice B." [ref=e3]:
+        - link "Alice B." [ref=e5]
+          - statictext "Alice B."
+        - statictext "Temple City, CA"
+      - image "5 star rating"
+      - statictext "Apr 1, 2026"
+      - statictext "Amazing shaved ice!"
+      - button "Helpful (0 reactions)" [ref=e10]
+      - region "Bob C." [ref=e11]:
+        - link "Bob C." [ref=e12]
+          - statictext "Bob C."
+        - statictext "Pasadena, CA"
+      - image "3 star rating"
+      - statictext "Mar 20, 2026"
+      - statictext "It was okay."
+      - button "Helpful (0 reactions)" [ref=e18]
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(2);
+    expect(reviews[0].reviewerName).toBe("Alice B.");
+    expect(reviews[0].userId).toBe("alice-b");
+    expect(reviews[0].reviewText).toBe("Amazing shaved ice!");
+    expect(reviews[1].reviewerName).toBe("Bob C.");
+    expect(reviews[1].userId).toBe("bob-c");
+    expect(reviews[1].reviewText).toBe("It was okay.");
+  });
+
+  test("joins multi-paragraph statictext in new format", () => {
+    const snapshot = `
+      - region "Bob C." [ref=e10]:
+        - link "Bob C." [ref=e11]
+          - statictext "Bob C."
+        - statictext "San Diego, CA"
+      - image "4 star rating"
+      - statictext "Mar 15, 2026"
+      - statictext "First paragraph of the review."
+      - linebreak
+      - linebreak
+      - statictext "Second paragraph of the review."
+      - linebreak
+      - linebreak
+      - statictext "Third paragraph."
+      - button "Helpful (0 reactions)" [ref=e20]
+      - region "Recommended Reviews" [ref=e21]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewText).toBe(
+      "First paragraph of the review.\n\n"
+      + "Second paragraph of the review.\n\n"
+      + "Third paragraph."
+    );
+  });
+
+  test("preserves review text that contains a city/state pattern", () => {
+    const snapshot = `
+      - region "Bob C." [ref=e10]:
+        - link "Bob C." [ref=e11]
+          - statictext "Bob C."
+        - statictext "San Diego, CA"
+      - image "4 star rating"
+      - statictext "Mar 15, 2026"
+      - statictext "I loved the boba in Pasadena, CA"
+      - button "Helpful (0 reactions)" [ref=e20]
+      - region "Recommended Reviews" [ref=e21]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewText).toBe("I loved the boba in Pasadena, CA");
+  });
+
+  test("does not drop reviewers with non-ASCII names", () => {
+    const snapshot = `
+      - region "李明." [ref=e10]:
+        - link "李明." [ref=e11]
+          - statictext "李明."
+        - statictext "San Gabriel, CA"
+      - image "5 star rating"
+      - statictext "Apr 10, 2026"
+      - statictext "Best boba ever!"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].userId).toBe("unknown");
+    expect(reviews[0].reviewText).toBe("Best boba ever!");
+  });
+
+  test("nested child region does not prematurely end the review block", () => {
+    const snapshot = `
+      - region "Alice B." [ref=e3]:
+        - link "Alice B." [ref=e5]
+          - statictext "Alice B."
+        - statictext "Temple City, CA"
+        - region "Photos" [ref=e6]:
+          - image "Photo 1"
+      - image "5 star rating"
+      - statictext "Apr 1, 2026"
+      - statictext "Amazing shaved ice!"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewerName).toBe("Alice B.");
+    expect(reviews[0].rating).toBe(5);
+    expect(reviews[0].reviewText).toBe("Amazing shaved ice!");
+  });
+
+  test("does not misattribute review text as reviewer location", () => {
+    const snapshot = `
+      - region "Alice B." [ref=e3]:
+        - link "Alice B." [ref=e5]
+          - statictext "Alice B."
+      - image "5 star rating"
+      - statictext "Apr 1, 2026"
+      - statictext "Loved the one in Pasadena, CA"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    const reviews = parseReviewsFromSnapshot(snapshot);
+
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].reviewerLocation).toBeNull();
+    expect(reviews[0].reviewText).toBe("Loved the one in Pasadena, CA");
+  });
+
+  test("fallback userId is stable across re-parses and edits", () => {
+    const makeSnapshot = (text: string) => `
+      - region "Alice B." [ref=e3]:
+        - link "Alice B." [ref=e5]
+          - statictext "Alice B."
+        - statictext "Temple City, CA"
+      - image "5 star rating"
+      - statictext "Apr 1, 2026"
+      - statictext "${text}"
+      - region "Recommended Reviews" [ref=e20]:
+`;
+    const before = parseReviewsFromSnapshot(makeSnapshot("Amazing shaved ice!"));
+    const after = parseReviewsFromSnapshot(makeSnapshot("Updated: pretty good shaved ice."));
+
+    expect(before[0].userId).toBe(after[0].userId);
   });
 });
