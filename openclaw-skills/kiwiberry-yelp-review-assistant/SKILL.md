@@ -14,6 +14,14 @@ Use this skill when the user wants Yelp review monitoring or reply drafting thro
 - Treat `stdout` from `kiwiberry` as JSON
 - Treat `stderr` from `kiwiberry` as human-readable status or error text
 
+## Execution policy
+
+- Prefer direct `kiwiberry` CLI calls and direct Mail sending via `osascript` over generating helper scripts.
+- Do not create Python, shell, or other runner files in the workspace to orchestrate this workflow unless the user explicitly asks for a persistent script.
+- Leave the workspace unchanged unless the user explicitly asked for a saved artifact.
+- If temporary files are needed for email bodies or intermediate text, write them outside the workspace, preferably in `/tmp`, and clean them up before finishing.
+- For repeated per-review actions, call the CLI directly rather than writing a reusable wrapper script unless the user explicitly asked for one.
+
 ## Command workflow
 
 Prefer this order unless the user has already narrowed the task to a later step.
